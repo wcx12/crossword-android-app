@@ -43,11 +43,12 @@ const DEFAULT_CUSTOM_SAMPLE = {
 const DEFAULT_LIST_INFOS: WordListInfo[] = [
   ...WORD_LISTS,
   {
-    id: 'custom_sample',
-    name: '编程术语',
-    filePath: '',
-    wordCount: 20,
-    isSystem: false,
+      id: 'custom_sample',
+      name: '编程术语',
+      filePath: '',
+      wordCount: 20,
+      isSystem: false,
+      language: 'en',
   },
 ];
 
@@ -73,6 +74,16 @@ function saveToStorage<T>(key: string, value: T): void {
   }
 }
 
+function mergeDefaultWordLists(stored: WordListInfo[]): WordListInfo[] {
+  const customLists = stored.filter(item => !item.isSystem);
+  const storedSystemById = new Map(stored.filter(item => item.isSystem).map(item => [item.id, item]));
+  const systemLists = WORD_LISTS.map(defaultList => ({
+    ...defaultList,
+    wordCount: storedSystemById.get(defaultList.id)?.wordCount ?? defaultList.wordCount,
+  }));
+  return [...systemLists, ...customLists];
+}
+
 function App() {
   const [screen, setScreen] = useState<Screen>('game');
 
@@ -83,7 +94,7 @@ function App() {
 
   // 从localStorage加载词表信息列表
   const [wordListInfos, setWordListInfos] = useState<WordListInfo[]>(() =>
-    loadFromStorage(STORAGE_KEY_LIST_INFOS, DEFAULT_LIST_INFOS)
+    mergeDefaultWordLists(loadFromStorage(STORAGE_KEY_LIST_INFOS, DEFAULT_LIST_INFOS))
   );
 
   // 从localStorage加载自定义词库
@@ -159,6 +170,7 @@ function App() {
       filePath: '',
       wordCount: entries.length,
       isSystem: false,
+      language: entries.some(entry => /[\u4e00-\u9fff]/u.test(entry.word)) ? 'zh' : 'en',
     };
 
     // 更新词表列表

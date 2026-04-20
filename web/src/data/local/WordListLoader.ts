@@ -1,4 +1,4 @@
-import { WordEntry, fromLine } from '../model/WordEntry';
+import { WordEntry, fromLine, getWordChars } from '../model/WordEntry';
 
 export async function loadWordList(): Promise<WordEntry[]> {
   try {
@@ -15,7 +15,14 @@ export async function loadWordList(): Promise<WordEntry[]> {
  * parseWordList - 解析词库文本
  * 与Android版本的WordFileParser.parse完全一致
  */
-function parseWordList(text: string): WordEntry[] {
+export function parseWordList(text: string): WordEntry[] {
   const lines = text.split('\n');
-  return lines.map(line => fromLine(line)).filter((entry): entry is WordEntry => entry !== null);
+  return lines
+    .map(line => {
+      const entry = fromLine(line);
+      if (!entry) return null;
+      const word = /[\u4e00-\u9fff]/u.test(entry.word) ? entry.word : entry.word.toUpperCase();
+      return { ...entry, word, length: getWordChars(word).length };
+    })
+    .filter((entry): entry is WordEntry => entry !== null);
 }

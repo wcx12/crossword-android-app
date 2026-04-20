@@ -36,7 +36,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   onShowEditor,
 }) => {
   const [showSettings, setShowSettings] = useState(false);
-  const { isLoading, crossword, errorMessage, isSolved, selectedCell, currentWord, currentWords, currentDirection, showSolution, gridRows, gridCols } = state;
+  const { isLoading, crossword, errorMessage, isSolved, selectedCell, currentWord, currentWords, currentDirection, showSolution, gridRows, gridCols, inputMode, candidateChars } = state;
 
   // 加载中
   if (isLoading) {
@@ -200,6 +200,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
       <Keyboard
         onLetterClick={onLetterInput}
         onDeleteClick={onDelete}
+        inputMode={inputMode}
+        candidateChars={candidateChars}
       />
 
       {/* 设置弹窗 */}

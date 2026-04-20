@@ -4,19 +4,28 @@ import { colors, borderRadius, shadows } from '../theme/theme';
 interface KeyboardProps {
   onLetterClick: (letter: string) => void;
   onDeleteClick: () => void;
+  inputMode?: 'letters' | 'candidateChars';
+  candidateChars?: string[];
 }
 
-export const Keyboard: React.FC<KeyboardProps> = ({ onLetterClick, onDeleteClick }) => {
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+export const Keyboard: React.FC<KeyboardProps> = ({
+  onLetterClick,
+  onDeleteClick,
+  inputMode = 'letters',
+  candidateChars = [],
+}) => {
+  const letters = inputMode === 'candidateChars' ? candidateChars : 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  const rowSize = inputMode === 'candidateChars' ? 10 : 9;
 
   const rows = [
-    letters.slice(0, 9),
-    letters.slice(9, 18),
-    letters.slice(18),
+    letters.slice(0, rowSize),
+    letters.slice(rowSize, rowSize * 2),
+    letters.slice(rowSize * 2, rowSize * 3),
+    letters.slice(rowSize * 3),
   ];
 
   const keyStyle: React.CSSProperties = {
-    width: 36,
+    width: inputMode === 'candidateChars' ? 34 : 36,
     height: 36,
     display: 'flex',
     alignItems: 'center',
@@ -24,7 +33,7 @@ export const Keyboard: React.FC<KeyboardProps> = ({ onLetterClick, onDeleteClick
     backgroundColor: colors.surface,
     border: `1px solid ${colors.outline}`,
     borderRadius: borderRadius.small,
-    fontSize: 16,
+    fontSize: inputMode === 'candidateChars' ? 18 : 16,
     fontWeight: 500,
     cursor: 'pointer',
     boxShadow: shadows.elevation1,
@@ -34,7 +43,12 @@ export const Keyboard: React.FC<KeyboardProps> = ({ onLetterClick, onDeleteClick
 
   return (
     <div style={{ padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-      {rows.map((row, rowIdx) => (
+      {inputMode === 'candidateChars' && (
+        <div style={{ fontSize: 12, color: colors.onSurfaceVariant, marginBottom: 4 }}>
+          候选字
+        </div>
+      )}
+      {rows.filter(row => row.length > 0).map((row, rowIdx) => (
         <div key={rowIdx} style={{ display: 'flex', gap: 4 }}>
           {row.map(letter => (
             <button

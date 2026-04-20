@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { WordListInfo } from '../../data/model/WordListInfo';
 import { colors } from '../theme/theme';
-import { WordEntry } from '../../data/model/WordEntry';
+import { WordEntry, getWordChars } from '../../data/model/WordEntry';
+import { parseWordList } from '../../data/local/WordListLoader';
 
 interface WordListDetailProps {
   wordList: WordListInfo;
@@ -28,7 +29,7 @@ export const WordListDetail: React.FC<WordListDetailProps> = ({
   useEffect(() => {
     // 如果有自定义词库数据，直接使用
     if (customWords) {
-      setWords(customWords.map(w => ({ word: w.word, clue: w.clue, length: w.word.length })));
+      setWords(customWords.map(w => ({ word: w.word, clue: w.clue, length: getWordChars(w.word).length })));
       setLoading(false);
       return;
     }
@@ -50,21 +51,6 @@ export const WordListDetail: React.FC<WordListDetailProps> = ({
   useEffect(() => {
     setEditName(wordList.name);
   }, [wordList.name]);
-
-  const parseWordList = (text: string) => {
-    const lines = text.split('\n');
-    return lines
-      .map(line => {
-        const trimmed = line.trim();
-        if (trimmed.length === 0) return null;
-        const parts = trimmed.split(/\s+/);
-        const word = parts[0];
-        if (!word.split('').every(c => /[a-zA-Z]/.test(c))) return null;
-        const clue = parts.length > 1 ? parts.slice(1).join(' ') : '';
-        return { word, clue, length: word.length };
-      })
-      .filter((entry): entry is WordEntry => entry !== null);
-  };
 
   const handleSaveName = () => {
     if (editName.trim() && onUpdateName) {

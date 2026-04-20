@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Crossword, Direction, WordPlacement, isCorrect, getWordsAt, Cell, Clue } from '../../domain/model/crossword';
-import { WordEntry } from '../../data/model/WordEntry';
 import { CrosswordGenerator } from '../../domain/usecase/CrosswordGenerator';
-import { loadWordList } from '../../data/local/WordListLoader';
+import { getWordChars, WordEntry } from '../../data/model/WordEntry';
+import { getCandidateChars, selectChineseCandidateWords } from '../../domain/usecase/ChineseCandidateSelector';
+import { parseWordList } from '../../data/local/WordListLoader';
 
 export interface GameState {
   isLoading: boolean;
@@ -16,6 +17,8 @@ export interface GameState {
   errorMessage: string | null;
   gridRows: number;
   gridCols: number;
+  inputMode: 'letters' | 'candidateChars';
+  candidateChars: string[];
 }
 
 const initialState: GameState = {
@@ -30,7 +33,13 @@ const initialState: GameState = {
   errorMessage: null,
   gridRows: 13,
   gridCols: 13,
+  inputMode: 'letters',
+  candidateChars: [],
 };
+
+function hasHan(text: string): boolean {
+  return /[\u4e00-\u9fff]/u.test(text);
+}
 
 export function useGameViewModel() {
   const [state, setState] = useState<GameState>(initialState);
@@ -69,22 +78,6 @@ export function useGameViewModel() {
       });
   };
 
-  // 解析词库
-  const parseWordList = (text: string) => {
-    const lines = text.split('\n');
-    return lines
-      .map(line => {
-        const trimmed = line.trim();
-        if (trimmed.length === 0) return null;
-        const parts = trimmed.split(/\s+/);
-        const word = parts[0].toUpperCase();
-        if (!word.split('').every(c => /[a-zA-Z]/.test(c))) return null;
-        const clue = parts.length > 1 ? parts.slice(1).join(' ') : '';
-        return { word, clue, length: word.length };
-      })
-      .filter((entry): entry is WordEntry => entry !== null);
-  };
-
   // 生成谜题
   const generatePuzzle = useCallback((words: WordEntry[], rows?: number, cols?: number) => {
     setState(prev => ({ ...prev, isLoading: true, errorMessage: null }));
@@ -99,7 +92,11 @@ export function useGameViewModel() {
       const newGenerator = new CrosswordGenerator(actualRows, actualCols);
       generatorRef.current = newGenerator;
 
-      const crossword = newGenerator.generate(words, 3);
+      const inputMode = words.some(entry => hasHan(entry.word)) ? 'candidateChars' : 'letters';
+      const generatorWords = inputMode === 'candidateChars'
+        ? selectChineseCandidateWords(words, 80)
+        : words;
+      const crossword = newGenerator.generate(generatorWords, 3);
 
       if (crossword) {
         setState(prev => ({
@@ -113,6 +110,10 @@ export function useGameViewModel() {
           currentWords: [],
           gridRows: actualRows,
           gridCols: actualCols,
+          inputMode,
+          candidateChars: inputMode === 'candidateChars'
+            ? getCandidateChars(crossword.placements.map(placement => placement.word))
+            : [],
         }));
       } else {
         setState(prev => ({
@@ -143,9 +144,9 @@ export function useGameViewModel() {
   // 使用自定义词表生成谜题
   const setCustomWords = useCallback((entries: { word: string; clue: string }[], rows?: number, cols?: number) => {
     const words: WordEntry[] = entries.map(e => ({
-      word: e.word,  // 保持原始大小写
+      word: hasHan(e.word) ? e.word : e.word.toUpperCase(),
       clue: e.clue,
-      length: e.word.length,
+      length: getWordChars(e.word).length,
     }));
     generatePuzzle(words, rows, cols);
   }, []);
@@ -218,6 +219,10 @@ export function useGameViewModel() {
       selectedCell: null,
       currentWord: null,
       currentWords: [],
+      inputMode: customWords.some(word => hasHan(word.word)) ? 'candidateChars' : 'letters',
+      candidateChars: customWords.some(word => hasHan(word.word))
+        ? getCandidateChars(customWords.map(word => word.word))
+        : [],
     }));
   }, []);
 
@@ -291,7 +296,7 @@ export function useGameViewModel() {
     if (!cell || cell.isBlocked) return;
 
     // 直接修改 char
-    crossword.grid[selectedCell[0]][selectedCell[1]].char = letter.toUpperCase();
+    crossword.grid[selectedCell[0]][selectedCell[1]].char = hasHan(letter) ? letter : letter.toUpperCase();
 
     // 自动移到下一个格子
     moveToNextCell();

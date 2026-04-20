@@ -1,4 +1,5 @@
 import { WordEntry } from '../../data/model/WordEntry';
+import { getWordChars } from '../../data/model/WordEntry';
 import { Direction, Cell, Crossword, WordPlacement } from '../model/crossword';
 
 // 类型别名
@@ -126,13 +127,14 @@ export class CrosswordGenerator {
    * 与Kotlin版本完全一致
    */
   private findPossiblePositions(word: WordEntry): PlacementInfo | null {
-    const wordLength = word.length;
+    const wordChars = getWordChars(word.word);
+    const wordLength = wordChars.length;
     const coordList: PlacementInfo[] = [];
 
     // 阶段1：收集所有交叉点
     const tempList: [number, [number, number, boolean][]][] = [];
-    for (let i = 0; i < word.word.length; i++) {
-      const letter = word.word[i];
+    for (let i = 0; i < wordChars.length; i++) {
+      const letter = wordChars[i];
       const coords = this.letCoords.get(letter);
       if (coords) {
         for (const coord of coords) {
@@ -227,6 +229,7 @@ export class CrosswordGenerator {
    * 与Kotlin版本完全一致
    */
   private scoreHorizontal(word: WordEntry, row: number, col: number, wordLength: number, baseScore: number = 1): number {
+    const wordChars = getWordChars(word.word);
     // 检查左边是否有邻居
     if (col > 0 && this.grid[row][col - 1] !== this.emptyChar) return 0;
     // 检查右边是否有邻居
@@ -242,7 +245,7 @@ export class CrosswordGenerator {
         // 空格：检查上下是否有邻居
         if (row > 0 && this.grid[row - 1][col + i] !== this.emptyChar) return 0;
         if (row + 1 < this.rows && this.grid[row + 1][col + i] !== this.emptyChar) return 0;
-      } else if (cell === word.word[i]) {
+      } else if (cell === wordChars[i]) {
         // 交叉点：得分+1
         score += 1;
       } else {
@@ -258,6 +261,7 @@ export class CrosswordGenerator {
    * 与Kotlin版本完全一致
    */
   private scoreVertical(word: WordEntry, row: number, col: number, wordLength: number, baseScore: number = 1): number {
+    const wordChars = getWordChars(word.word);
     // 检查上方是否有邻居
     if (row > 0 && this.grid[row - 1][col] !== this.emptyChar) return 0;
     // 检查下方是否有邻居
@@ -272,7 +276,7 @@ export class CrosswordGenerator {
         // 检查左右
         if (col > 0 && this.grid[row + i][col - 1] !== this.emptyChar) return 0;
         if (col + 1 < this.cols && this.grid[row + i][col + 1] !== this.emptyChar) return 0;
-      } else if (cell === word.word[i]) {
+      } else if (cell === wordChars[i]) {
         score += 1;
       } else {
         return 0;
@@ -292,22 +296,23 @@ export class CrosswordGenerator {
     const horizontal = !vertical;
 
     // 逐字符放置
-    for (let i = 0; i < word.word.length; i++) {
+    const wordChars = getWordChars(word.word);
+    for (let i = 0; i < wordChars.length; i++) {
       // 计算当前字母的实际位置
       const r = vertical ? row + i : row;
       const c = vertical ? col : col + i;
 
       // 写入网格
-      this.grid[r][c] = word.word[i];
+      this.grid[r][c] = wordChars[i];
 
       // 更新交叉点索引
       const coord: [number, number, boolean] = [r, c, vertical];
       const existing: [number, number, boolean] = [r, c, horizontal];
 
-      let list = this.letCoords.get(word.word[i]);
+      let list = this.letCoords.get(wordChars[i]);
       if (!list) {
         list = [];
-        this.letCoords.set(word.word[i], list);
+        this.letCoords.set(wordChars[i], list);
       }
 
       // 移除旧的反方向记录
@@ -373,7 +378,7 @@ export class CrosswordGenerator {
     const words = indexedWords
       .sort((a, b) => {
         if (a.word.length !== b.word.length) {
-          return a.word.length - b.word.length;
+          return getWordChars(a.word.word).length - getWordChars(b.word.word).length;
         }
         return a.index - b.index;
       })
@@ -386,13 +391,14 @@ export class CrosswordGenerator {
       for (let r = 0; r < this.rows; r++) {
         for (let c = 0; c < this.cols; c++) {
           // 找到词的第一个字母
-          if (this.bestGrid[r][c] !== word.word[0]) continue;
+          const wordChars = getWordChars(word.word);
+          if (this.bestGrid[r][c] !== wordChars[0]) continue;
 
           // 尝试水平匹配
-          if (c + word.word.length <= this.cols) {
+          if (c + wordChars.length <= this.cols) {
             let match = true;
-            for (let i = 0; i < word.word.length; i++) {
-              if (this.bestGrid[r][c + i] !== word.word[i]) {
+            for (let i = 0; i < wordChars.length; i++) {
+              if (this.bestGrid[r][c + i] !== wordChars[i]) {
                 match = false;
                 break;
               }
@@ -415,10 +421,10 @@ export class CrosswordGenerator {
           }
 
           // 尝试垂直匹配
-          if (r + word.word.length <= this.rows) {
+          if (r + wordChars.length <= this.rows) {
             let match = true;
-            for (let i = 0; i < word.word.length; i++) {
-              if (this.bestGrid[r + i][c] !== word.word[i]) {
+            for (let i = 0; i < wordChars.length; i++) {
+              if (this.bestGrid[r + i][c] !== wordChars[i]) {
                 match = false;
                 break;
               }

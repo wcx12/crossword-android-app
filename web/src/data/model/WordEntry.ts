@@ -11,6 +11,14 @@ export interface WordEntry {
   length: number; // 单词长度
 }
 
+export function getWordChars(word: string): string[] {
+  return Array.from(word);
+}
+
+export function isValidWordText(word: string): boolean {
+  return getWordChars(word).every(c => /[a-zA-Z\u4e00-\u9fff]/u.test(c));
+}
+
 /**
  * fromLine - 从行解析WordEntry
  *
@@ -29,11 +37,11 @@ export function fromLine(line: string): WordEntry | null {
   // 按空白字符分割
   const parts = trimmed.split(/\s+/);
 
-  // 第一个部分是单词
-  const word = parts[0].toUpperCase();
+  // 第一个部分是单词，保持原始大小写
+  const word = parts[0];
 
-  // 验证单词只包含字母
-  if (!word.split('').every(c => /[a-zA-Z]/.test(c))) {
+  // 验证单词只包含英文或汉字
+  if (!isValidWordText(word)) {
     return null;
   }
 
@@ -43,6 +51,6 @@ export function fromLine(line: string): WordEntry | null {
   return {
     word,
     clue,
-    length: word.length
+    length: getWordChars(word).length
   };
 }
