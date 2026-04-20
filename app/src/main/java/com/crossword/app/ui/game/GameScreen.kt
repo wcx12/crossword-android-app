@@ -338,6 +338,7 @@ private fun GameContent(
             selectedCell = state.selectedCell,
             // currentWord：当前词语
             currentWord = state.currentWord,
+            currentWords = state.currentWords,
             // currentDirection：当前方向
             currentDirection = state.currentDirection,
             // showSolution：是否显示答案

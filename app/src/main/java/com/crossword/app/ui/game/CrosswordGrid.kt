@@ -86,6 +86,7 @@ fun CrosswordGrid(
     crossword: Crossword,                    // 谜题数据
     selectedCell: Pair<Int, Int>?,           // 当前选中格子，null表示无选中
     currentWord: WordPlacement?,             // 当前词语，null表示无选中
+    currentWords: List<WordPlacement> = emptyList(),
     currentDirection: Direction,             // 当前方向
     showSolution: Boolean,                   // 是否显示答案
     onCellClick: (Int, Int) -> Unit,        // 点击回调
@@ -155,7 +156,9 @@ fun CrosswordGrid(
                             // getCells()：返回词语占据的所有格子坐标列表
                             // contains()：检查列表是否包含指定坐标
                             // ?: false：如果currentWord为null，返回false
-                            val isInCurrentWord = currentWord?.getCells()?.contains(Pair(row, col)) == true
+                            val cellPosition = Pair(row, col)
+                            val isInCurrentWord = currentWord?.getCells()?.contains(cellPosition) == true
+                            val isInRelatedWord = currentWords.any { it.getCells().contains(cellPosition) }
 
                             /**
                              * CellView - 单个格子组件
@@ -171,6 +174,7 @@ fun CrosswordGrid(
                                 isSelected = isSelected,
                                 // isInCurrentWord：是否在当前词语中
                                 isInCurrentWord = isInCurrentWord,
+                                isInRelatedWord = isInRelatedWord,
                                 // showSolution：是否显示答案
                                 showSolution = showSolution,
                                 // cellSize：格子尺寸
@@ -209,6 +213,7 @@ private fun CellView(
     crossword: Crossword,           // 谜题引用
     isSelected: Boolean,           // 是否选中
     isInCurrentWord: Boolean,      // 是否在当前词语中
+    isInRelatedWord: Boolean,      // 是否在当前格子从属的其他词语中
     showSolution: Boolean,         // 是否显示答案
     cellSize: Dp,                  // 格子尺寸
     onClick: () -> Unit            // 点击回调
@@ -228,6 +233,7 @@ private fun CellView(
         isSelected -> CellSelected
         // 条件3：在当前词语中 → 使用高亮颜色
         isInCurrentWord -> CellHighlight
+        isInRelatedWord -> CellHighlight.copy(alpha = 0.55f)
         // 默认：空格子颜色
         else -> CellEmpty
     }

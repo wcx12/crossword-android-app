@@ -55,6 +55,8 @@ data class GameState(
     // 非null=显示该词语的线索
     val currentWord: WordPlacement? = null,
 
+    val currentWords: List<WordPlacement> = emptyList(),
+
     // showSolution：答案显示模式
     // true=显示所有正确答案
     // false=只显示用户输入

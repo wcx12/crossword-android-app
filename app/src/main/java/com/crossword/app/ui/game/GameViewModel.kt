@@ -186,7 +186,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                                 isSolved = false,        // 重置完成状态
                                 showSolution = false,    // 重置答案显示
                                 selectedCell = null,     // 清除选中
-                                currentWord = null      // 清除当前词
+                                currentWord = null,      // 清除当前词
+                                currentWords = emptyList()
                             )
                         }
                     } else {
@@ -227,63 +228,25 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
      * @param col：列索引
      */
     fun selectCell(row: Int, col: Int) {
-        // 获取当前状态
-        val crossword = _state.value.crossword ?: return  // ?: return = if null return
+        val crossword = _state.value.crossword ?: return
 
-        // 安全获取格子
         val cell = crossword.grid.getOrNull(row)?.getOrNull(col) ?: return
 
-        // 墙格子不能选择
         if (cell.isBlocked) return
 
-        // 获取当前方向
         val currentDir = _state.value.currentDirection
-
-        /**
-         * 获取点击位置的词语
-         *
-         * getWordAt()返回包含此格子的词语
-         * 可能返回null（格子在词的外围）
-         */
-        val word = crossword.getWordAt(row, col)
-
-        /**
-         * 确定新方向
-         *
-         * when表达式多条件判断
-         */
-        val newDirection = when {
-            // 情况1：无词语（空白区域）
-            // 保持当前方向
-            word == null -> currentDir
-
-            // 情况2：词语方向与当前方向不同
-            // 切换到那个词的方向
-            word.direction != currentDir -> word.direction
-
-            // 情况3：词语方向与当前方向相同
-            else -> {
-                // 获取当前词
-                val currentWord = _state.value.currentWord
-                if (currentWord != null && word.id == currentWord.id) {
-                    // 点击同一词语的其他位置，保持方向
-                    currentDir
-                } else {
-                    // 点击不同词语，切换方向
-                    word.direction
-                }
-            }
-        }
-
-        // 重新获取词语（方向可能改变了）
-        val newWord = crossword.getWordAt(row, col)
+        val wordsAtCell = crossword.getWordsAt(row, col)
+        val newWord = wordsAtCell.firstOrNull { it.direction == currentDir }
+            ?: wordsAtCell.firstOrNull()
+        val newDirection = newWord?.direction ?: currentDir
 
         // 更新状态
         _state.update {
             it.copy(
                 selectedCell = Pair(row, col),     // 新选中格子
                 currentDirection = newDirection,   // 新方向
-                currentWord = newWord              // 新词语
+                currentWord = newWord,             // 新词语
+                currentWords = wordsAtCell
             )
         }
     }
@@ -306,14 +269,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         // 如果有选中格子
         if (selected != null && crossword != null) {
-            // 尝试获取新方向的词语
-            val word = crossword.getWordAt(selected.first, selected.second)
+            val wordsAtCell = crossword.getWordsAt(selected.first, selected.second)
+            val word = wordsAtCell.firstOrNull { it.direction == newDir }
             _state.update {
                 it.copy(
                     currentDirection = newDir,
                     // takeIf：如果词语方向匹配则返回，否则返回当前词
-                    currentWord = word?.takeIf { w -> w.direction == newDir }
-                        ?: _state.value.currentWord
+                    currentWord = word ?: _state.value.currentWord,
+                    currentWords = wordsAtCell
                 )
             }
         } else {
@@ -332,12 +295,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val crossword = _state.value.crossword
 
         if (selected != null && crossword != null) {
-            val word = crossword.getWordAt(selected.first, selected.second)
+            val wordsAtCell = crossword.getWordsAt(selected.first, selected.second)
+            val word = wordsAtCell.firstOrNull { it.direction == direction }
             _state.update {
                 it.copy(
                     currentDirection = direction,
-                    currentWord = word?.takeIf { w -> w.direction == direction }
-                        ?: _state.value.currentWord
+                    currentWord = word ?: _state.value.currentWord,
+                    currentWords = wordsAtCell
                 )
             }
         } else {

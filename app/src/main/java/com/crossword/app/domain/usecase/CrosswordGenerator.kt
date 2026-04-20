@@ -427,7 +427,7 @@ class CrosswordGenerator(
         }
 
         // 找出所有词语位置并编号
-        val placements = findPlacements()
+        val placements = findPlacements(bestGrid)
         val clues = placements.map { Clue(it.number, it.word, it.clue, it.direction) }
 
         return Crossword(rows, cols, cellGrid, placements, clues)
@@ -441,9 +441,16 @@ class CrosswordGenerator(
      *
      * @return：词语位置列表（带编号）
      */
-    private fun findPlacements(): List<WordPlacement> {
+    private data class PlacementKey(
+        val word: String,
+        val row: Int,
+        val col: Int,
+        val direction: Direction
+    )
+
+    private fun findPlacements(sourceGrid: List<List<Char>>): List<WordPlacement> {
         val placements = mutableListOf<WordPlacement>()
-        val visited = mutableSetOf<Pair<Int, Int>>()
+        val seenPlacements = mutableSetOf<PlacementKey>()
 
         // 按长度排序（先处理长词）
         // 这样可以避免短词切断长词
@@ -455,20 +462,20 @@ class CrosswordGenerator(
             for (r in 0 until rows) {
                 for (c in 0 until cols) {
                     // 找到词的第一个字母
-                    if (grid[r][c] != word.word[0]) continue
+                    if (sourceGrid[r][c] != word.word[0]) continue
 
                     // 尝试水平匹配
                     if (c + word.length <= cols) {
                         var match = true
                         for (i in word.word.indices) {
-                            if (grid[r][c + i] != word.word[i]) {
+                            if (sourceGrid[r][c + i] != word.word[i]) {
                                 match = false
                                 break
                             }
                         }
                         if (match) {
-                            val key = Pair(r, c)
-                            if (key !in visited) {
+                            val key = PlacementKey(word.word, r, c, Direction.HORIZONTAL)
+                            if (seenPlacements.add(key)) {
                                 placements.add(
                                     WordPlacement(
                                         id = placements.size,
@@ -481,10 +488,6 @@ class CrosswordGenerator(
                                         displayLabel = ""
                                     )
                                 )
-                                // 标记为已访问
-                                for (offset in word.word.indices) {
-                                    visited.add(Pair(r, c + offset))
-                                }
                             }
                         }
                     }
@@ -493,14 +496,14 @@ class CrosswordGenerator(
                     if (r + word.length <= rows) {
                         var match = true
                         for (i in word.word.indices) {
-                            if (grid[r + i][c] != word.word[i]) {
+                            if (sourceGrid[r + i][c] != word.word[i]) {
                                 match = false
                                 break
                             }
                         }
                         if (match) {
-                            val key = Pair(r, c)
-                            if (key !in visited) {
+                            val key = PlacementKey(word.word, r, c, Direction.VERTICAL)
+                            if (seenPlacements.add(key)) {
                                 placements.add(
                                     WordPlacement(
                                         id = placements.size,
@@ -513,9 +516,6 @@ class CrosswordGenerator(
                                         displayLabel = ""
                                     )
                                 )
-                                for (offset in word.word.indices) {
-                                    visited.add(Pair(r + offset, c))
-                                }
                             }
                         }
                     }

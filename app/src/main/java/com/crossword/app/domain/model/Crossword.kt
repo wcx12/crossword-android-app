@@ -172,6 +172,13 @@ data class Crossword(
         }
     }
 
+    fun getWordsAt(row: Int, col: Int): List<WordPlacement> {
+        val cell = Pair(row, col)
+        return placements.filter { placement ->
+            placement.getCells().contains(cell)
+        }
+    }
+
     /**
      * isFilled - 检查是否全部填满
      *
