@@ -3,6 +3,7 @@ import { WordListInfo } from '../../data/model/WordListInfo';
 import { WordEntry } from '../../data/model/WordEntry';
 import { searchWords, isValidPattern, SearchParams } from '../../domain/usecase/wordSearch';
 import { colors } from '../theme/theme';
+import { parseWordList } from '../../data/local/WordListLoader';
 
 interface WordSearchScreenProps {
   wordLists: WordListInfo[];
@@ -23,6 +24,8 @@ export const WordSearchScreen: React.FC<WordSearchScreenProps> = ({
   const [endsWith, setEndsWith] = useState('');
   const [results, setResults] = useState<WordEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const selectedWordList = wordLists.find(w => w.id === selectedWordListId);
+  const isChineseList = selectedWordList?.language === 'zh';
 
   // 加载词表数据
   useEffect(() => {
@@ -37,22 +40,6 @@ export const WordSearchScreen: React.FC<WordSearchScreenProps> = ({
         });
     }
   }, [selectedWordListId, wordLists]);
-
-  // 解析词库
-  const parseWordList = (text: string) => {
-    const lines = text.split('\n');
-    return lines
-      .map(line => {
-        const trimmed = line.trim();
-        if (trimmed.length === 0) return null;
-        const parts = trimmed.split(/\s+/);
-        const word = parts[0];
-        if (!word.split('').every(c => /[a-zA-Z]/.test(c))) return null;
-        const clue = parts.length > 1 ? parts.slice(1).join(' ') : '';
-        return { word, clue, length: word.length };
-      })
-      .filter((entry): entry is WordEntry => entry !== null);
-  };
 
   // 执行搜索
   const handleSearch = () => {
@@ -106,7 +93,7 @@ export const WordSearchScreen: React.FC<WordSearchScreenProps> = ({
         >
           ← 返回
         </button>
-        <span style={{ fontSize: 18, fontWeight: 'bold' }}>搜索单词</span>
+        <span style={{ fontSize: 18, fontWeight: 'bold' }}>{isChineseList ? '搜索成语' : '搜索单词'}</span>
       </div>
 
       {/* 搜索表单 */}
@@ -151,13 +138,13 @@ export const WordSearchScreen: React.FC<WordSearchScreenProps> = ({
             color: colors.onSurfaceVariant,
             marginBottom: 6,
           }}>
-            已知位置（用 _ 表示未知，如 _O__E）
+            {isChineseList ? '已知位置（用 _ 表示未知，如 _蛇__）' : '已知位置（用 _ 表示未知，如 _O__E）'}
           </label>
           <input
             type="text"
             value={pattern}
-            onChange={(e) => setPattern(e.target.value.toUpperCase())}
-            placeholder="如：_ O _ _ E"
+            onChange={(e) => setPattern(e.target.value.toUpperCase().replace(/\s+/g, ''))}
+            placeholder={isChineseList ? '如：_蛇__' : '如：_O__E'}
             style={{
               width: '100%',
               padding: '8px 12px',
@@ -170,7 +157,7 @@ export const WordSearchScreen: React.FC<WordSearchScreenProps> = ({
           />
           {!isPatternValid && (
             <div style={{ color: colors.error, fontSize: 11, marginTop: 4 }}>
-              模式只能包含字母和下划线
+              {isChineseList ? '模式只能包含汉字和下划线' : '模式只能包含字母和下划线'}
             </div>
           )}
         </div>
@@ -183,13 +170,13 @@ export const WordSearchScreen: React.FC<WordSearchScreenProps> = ({
             color: colors.onSurfaceVariant,
             marginBottom: 6,
           }}>
-            单词长度
+            {isChineseList ? '字数' : '单词长度'}
           </label>
           <input
             type="number"
             value={length}
             onChange={(e) => setLength(e.target.value)}
-            placeholder="如：6"
+            placeholder={isChineseList ? '如：4' : '如：6'}
             min="1"
             max="30"
             style={{
@@ -212,13 +199,13 @@ export const WordSearchScreen: React.FC<WordSearchScreenProps> = ({
               color: colors.onSurfaceVariant,
               marginBottom: 6,
             }}>
-              首位字母
+              {isChineseList ? '首字' : '首位字母'}
             </label>
             <input
               type="text"
               value={startsWith}
               onChange={(e) => setStartsWith(e.target.value.toUpperCase())}
-              placeholder="如：M"
+              placeholder={isChineseList ? '如：画' : '如：M'}
               maxLength={1}
               style={{
                 width: '100%',
@@ -237,13 +224,13 @@ export const WordSearchScreen: React.FC<WordSearchScreenProps> = ({
               color: colors.onSurfaceVariant,
               marginBottom: 6,
             }}>
-              末位字母
+              {isChineseList ? '末字' : '末位字母'}
             </label>
             <input
               type="text"
               value={endsWith}
               onChange={(e) => setEndsWith(e.target.value.toUpperCase())}
-              placeholder="如：E"
+              placeholder={isChineseList ? '如：足' : '如：E'}
               maxLength={1}
               style={{
                 width: '100%',
