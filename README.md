@@ -2,6 +2,10 @@
 
 A crossword puzzle game app built with Kotlin and Jetpack Compose.
 
+## Inspired by
+
+This project is a Kotlin/Android port of [genxword](https://github.com/riverrun/genxword), a Python crossword generator originally created by [Peter H. Miller](https://github.com/riverrun).
+
 ## Features
 
 - **Crossword Generation**: Automatically generates crossword puzzles using a greedy algorithm
