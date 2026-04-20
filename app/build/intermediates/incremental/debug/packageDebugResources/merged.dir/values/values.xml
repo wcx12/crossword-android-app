@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="cell_empty">#FFFFFFFF</color>
+    <color name="cell_filled">#FF303030</color>
+    <color name="cell_highlight">#FFE3F2FD</color>
+    <color name="cell_selected">#FF2196F3</color>
+    <color name="text_primary">#FF212121</color>
+    <color name="text_secondary">#FF757575</color>
+    <color name="white">#FFFFFFFF</color>
+    <string name="across">横</string>
+    <string name="app_name">填字游戏</string>
+    <string name="cancel">取消</string>
+    <string name="check_answer">检查答案</string>
+    <string name="clues">线索</string>
+    <string name="confirm">确认</string>
+    <string name="down">竖</string>
+    <string name="enter_word_hint">输入单词，每行一个</string>
+    <string name="import_wordlist">导入词库</string>
+    <string name="input_words">输入单词</string>
+    <string name="loading">加载中...</string>
+    <string name="new_game">新游戏</string>
+    <string name="no_puzzle">暂无谜题</string>
+    <string name="show_solution">显示答案</string>
+    <string name="use_custom">使用自定义词库</string>
+    <string name="use_default">使用默认词库</string>
+    <string name="word_bank">词库</string>
+    <style name="Theme.CrosswordApp" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#FF2196F3</item>
+    </style>
+</resources>
