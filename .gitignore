@@ -12,3 +12,6 @@ local.properties
 # Misc
 *.log
 .DS_Store
+
+# Local worktrees
+.worktrees/
