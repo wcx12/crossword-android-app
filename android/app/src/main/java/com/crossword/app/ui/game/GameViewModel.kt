@@ -228,16 +228,31 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteLetter() {
         val selected = _state.value.selectedCell ?: return
         val crossword = _state.value.crossword ?: return
-        val cell = crossword.grid.getOrNull(selected.first)?.getOrNull(selected.second) ?: return
+        val target = GameDeletionNavigator.findTarget(
+            crossword = crossword,
+            selectedCell = selected,
+            currentWord = _state.value.currentWord
+        ) ?: return
+        val cell = crossword.grid.getOrNull(target.first)?.getOrNull(target.second) ?: return
 
         if (cell.isBlocked) return
 
         val newGrid = crossword.mutableCellCopy()
-        newGrid[selected.first][selected.second] =
-            newGrid[selected.first][selected.second].copy(char = null)
+        newGrid[target.first][target.second] =
+            newGrid[target.first][target.second].copy(char = null)
         val newCrossword = crossword.copy(grid = newGrid)
+        val wordsAtTarget = newCrossword.getWordsAt(target.first, target.second)
+        val currentWord = wordsAtTarget.firstOrNull { it.direction == _state.value.currentDirection }
+            ?: wordsAtTarget.firstOrNull()
 
-        _state.update { it.copy(crossword = newCrossword) }
+        _state.update {
+            it.copy(
+                crossword = newCrossword,
+                selectedCell = target,
+                currentWord = currentWord,
+                currentWords = wordsAtTarget
+            )
+        }
     }
 
     fun clearWord() {
