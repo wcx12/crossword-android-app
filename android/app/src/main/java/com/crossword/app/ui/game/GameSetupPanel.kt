@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -14,6 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -37,6 +40,42 @@ import com.crossword.app.data.model.WordEntry
 
 private const val MinGridSize = 5
 private const val MaxGridSize = 25
+
+@Composable
+fun GameSettingsScreen(
+    state: GameState,
+    onSelectWordList: (String) -> Unit,
+    onGridSizeChange: (Int, Int) -> Unit,
+    onImportWordList: (String, List<WordEntry>) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = "词库与棋盘",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = "选择题库、调整行列，或导入自己的词条。改动会立即生成新棋盘。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        GameSetupPanel(
+            state = state,
+            onSelectWordList = onSelectWordList,
+            onGridSizeChange = onGridSizeChange,
+            onImportWordList = onImportWordList
+        )
+    }
+}
 
 @Composable
 fun GameSetupPanel(

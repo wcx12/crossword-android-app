@@ -27,6 +27,7 @@ import androidx.compose.material3.*
 
 // compose运行时：remember存储局部状态，mutableStateOf创建可观察状态
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 
 // Alignment：对齐方式（TopStart左上、Center居中等）
 import androidx.compose.ui.Alignment
@@ -75,6 +76,7 @@ fun GameScreen(
     // - collectAsState()：将Flow转为Compose的State对象
     // - by关键字：委托属性，直接使用state.xxx而非state.value.xxx
     val state by viewModel.state.collectAsState()
+    var destination by rememberSaveable { mutableStateOf(GameDestination.Game) }
 
     // Scaffold：脚手架组件，提供标准的Material3页面结构
     // topBar：顶部应用栏
@@ -87,7 +89,7 @@ fun GameScreen(
             // TopAppBar：Material3风格的顶部栏
             TopAppBar(
                 // title：标题文本
-                title = { Text("填字游戏") },
+                title = { Text(destination.title) },
 
                 // colors：配置颜色
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -99,18 +101,40 @@ fun GameScreen(
 
                 // actions：标题栏右侧的操作按钮
                 actions = {
+                    if (destination == GameDestination.Settings) {
+                        TextButton(
+                            onClick = { destination = GameDestination.Game },
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            Text("完成")
+                        }
+                    } else {
+                        TextButton(
+                            onClick = { destination = GameDestination.Settings },
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            Text("配置")
+                        }
+                    }
+
                     // TextButton：文本按钮（无背景）
-                    TextButton(
-                        // onClick：点击事件处理，调用ViewModel的新游戏方法
-                        onClick = { viewModel.newGame() },
-                        // colors：按钮颜色配置
-                        colors = ButtonDefaults.textButtonColors(
-                            // contentColor：按钮文字颜色
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
-                    ) {
-                        // Text：文本组件，显示"新游戏"
-                        Text("新游戏")
+                    if (destination == GameDestination.Game) {
+                        TextButton(
+                            // onClick：点击事件处理，调用ViewModel的新游戏方法
+                            onClick = { viewModel.newGame() },
+                            // colors：按钮颜色配置
+                            colors = ButtonDefaults.textButtonColors(
+                                // contentColor：按钮文字颜色
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            // Text：文本组件，显示"新游戏"
+                            Text("新游戏")
+                        }
                     }
                 }
             )
@@ -127,7 +151,16 @@ fun GameScreen(
                 .padding(padding)
         ) {
             // when表达式：类似于switch，根据条件显示不同UI
-            when {
+            if (destination == GameDestination.Settings) {
+                GameSettingsScreen(
+                    state = state,
+                    onSelectWordList = { viewModel.selectWordList(it) },
+                    onGridSizeChange = { rows, cols -> viewModel.resizeGrid(rows, cols) },
+                    onImportWordList = { name, entries ->
+                        viewModel.addCustomWordList(name, entries)
+                    }
+                )
+            } else when {
                 // 条件1：正在加载
                 state.isLoading -> {
                     // LoadingView：加载中提示组件
@@ -151,11 +184,6 @@ fun GameScreen(
                     GameContent(
                         // state：完整游戏状态
                         state = state,
-                        onSelectWordList = { viewModel.selectWordList(it) },
-                        onGridSizeChange = { rows, cols -> viewModel.resizeGrid(rows, cols) },
-                        onImportWordList = { name, entries ->
-                            viewModel.addCustomWordList(name, entries)
-                        },
                         // onCellClick：格子点击回调
                         // lambda语法：lambda表达式作为最后一个参数可放在括号外
                         onCellClick = { row, col -> viewModel.selectCell(row, col) },
@@ -300,9 +328,6 @@ private fun EmptyView(
 @Composable
 private fun GameContent(
     state: GameState,                                              // 游戏状态
-    onSelectWordList: (String) -> Unit,
-    onGridSizeChange: (Int, Int) -> Unit,
-    onImportWordList: (String, List<com.crossword.app.data.model.WordEntry>) -> Unit,
     onCellClick: (Int, Int) -> Unit,                              // (row, col)点击回调
     onToggleDirection: () -> Unit,                                 // 切换方向回调
     onSetDirection: (Direction) -> Unit,                           // 设置方向回调
@@ -320,13 +345,6 @@ private fun GameContent(
         // fillMaxSize：填满可用空间
         modifier = Modifier.fillMaxSize()
     ) {
-        GameSetupPanel(
-            state = state,
-            onSelectWordList = onSelectWordList,
-            onGridSizeChange = onGridSizeChange,
-            onImportWordList = onImportWordList
-        )
-
         // 顶部提示栏
         HintBar(
             // currentWord：当前选中的词语
