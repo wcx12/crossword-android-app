@@ -64,8 +64,8 @@ data class WordEntry(
             // "\\s+"表示一个或多个空白字符
             val parts = trimmed.split("\\s+".toRegex(), limit = 2)
 
-            // parts[0]转为大写
-            val word = parts[0].uppercase()
+            // 英文统一大写，中文保持原字符
+            val word = normalizeWord(parts[0])
 
             // getOrElse：获取第二个元素，如果不存在则返回空字符串
             val clue = parts.getOrElse(1) { "" }
@@ -76,6 +76,14 @@ data class WordEntry(
             } else {
                 null
             }
+        }
+
+        private fun hasHan(text: String): Boolean {
+            return text.any { it in '\u4e00'..'\u9fff' }
+        }
+
+        private fun normalizeWord(raw: String): String {
+            return if (hasHan(raw)) raw else raw.uppercase()
         }
     }
 }
