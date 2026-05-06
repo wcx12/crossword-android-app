@@ -44,8 +44,8 @@ private const val MaxGridSize = 25
 @Composable
 fun GameSettingsScreen(
     state: GameState,
-    onSelectWordList: (String) -> Unit,
-    onGridSizeChange: (Int, Int) -> Unit,
+    draft: GameSettingsDraft,
+    onDraftChange: (GameSettingsDraft) -> Unit,
     onImportWordList: (String, List<WordEntry>) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -62,7 +62,7 @@ fun GameSettingsScreen(
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
-                text = "选择题库、调整行列，或导入自己的词条。改动会立即生成新棋盘。",
+                text = "选择题库、调整行列，或导入自己的词条。点击完成后会生成新棋盘。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -70,8 +70,8 @@ fun GameSettingsScreen(
 
         GameSetupPanel(
             state = state,
-            onSelectWordList = onSelectWordList,
-            onGridSizeChange = onGridSizeChange,
+            draft = draft,
+            onDraftChange = onDraftChange,
             onImportWordList = onImportWordList
         )
     }
@@ -80,19 +80,17 @@ fun GameSettingsScreen(
 @Composable
 fun GameSetupPanel(
     state: GameState,
-    onSelectWordList: (String) -> Unit,
-    onGridSizeChange: (Int, Int) -> Unit,
+    draft: GameSettingsDraft,
+    onDraftChange: (GameSettingsDraft) -> Unit,
     onImportWordList: (String, List<WordEntry>) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showImportDialog by remember { mutableStateOf(false) }
 
-    val selectedList = remember(state.wordLists, state.currentWordListId) {
-        state.wordLists.firstOrNull { it.id == state.currentWordListId }
+    val selectedList = remember(state.wordLists, draft.wordListId) {
+        state.wordLists.firstOrNull { it.id == draft.wordListId }
     }
-    val currentWordListName = state.currentWordListName
-        .ifBlank { selectedList?.name.orEmpty() }
-        .ifBlank { "未选择词库" }
+    val currentWordListName = selectedList?.name.orEmpty().ifBlank { "未选择词库" }
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val horizontal = maxWidth >= 520.dp
@@ -107,13 +105,16 @@ fun GameSetupPanel(
                 WordListSelector(
                     label = currentWordListName,
                     state = state,
-                    onSelectWordList = onSelectWordList,
+                    selectedWordListId = draft.wordListId,
+                    onSelectWordList = { onDraftChange(draft.withWordList(it)) },
                     modifier = Modifier.weight(1f)
                 )
                 GridSizeControls(
-                    rows = state.gridRows,
-                    cols = state.gridCols,
-                    onGridSizeChange = onGridSizeChange
+                    rows = draft.rows,
+                    cols = draft.cols,
+                    onGridSizeChange = { rows, cols ->
+                        onDraftChange(draft.withGridSize(rows, cols))
+                    }
                 )
                 ImportWordListButton(onClick = { showImportDialog = true })
             }
@@ -125,7 +126,8 @@ fun GameSetupPanel(
                 WordListSelector(
                     label = currentWordListName,
                     state = state,
-                    onSelectWordList = onSelectWordList,
+                    selectedWordListId = draft.wordListId,
+                    onSelectWordList = { onDraftChange(draft.withWordList(it)) },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Row(
@@ -134,9 +136,11 @@ fun GameSetupPanel(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     GridSizeControls(
-                        rows = state.gridRows,
-                        cols = state.gridCols,
-                        onGridSizeChange = onGridSizeChange
+                        rows = draft.rows,
+                        cols = draft.cols,
+                        onGridSizeChange = { rows, cols ->
+                            onDraftChange(draft.withGridSize(rows, cols))
+                        }
                     )
                     ImportWordListButton(onClick = { showImportDialog = true })
                 }
@@ -156,6 +160,7 @@ fun GameSetupPanel(
 private fun WordListSelector(
     label: String,
     state: GameState,
+    selectedWordListId: String,
     onSelectWordList: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -187,7 +192,7 @@ private fun WordListSelector(
                     text = {
                         Column {
                             Text(
-                                text = wordList.name,
+                                text = if (wordList.id == selectedWordListId) "${wordList.name} ✓" else wordList.name,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )

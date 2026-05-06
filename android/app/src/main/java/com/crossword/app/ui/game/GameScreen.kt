@@ -77,6 +77,29 @@ fun GameScreen(
     // - by关键字：委托属性，直接使用state.xxx而非state.value.xxx
     val state by viewModel.state.collectAsState()
     var destination by rememberSaveable { mutableStateOf(GameDestination.Game) }
+    var settingsDraft by remember { mutableStateOf<GameSettingsDraft?>(null) }
+
+    fun currentSettingsDraft(): GameSettingsDraft {
+        return settingsDraft ?: GameSettingsDraft.from(state)
+    }
+
+    fun openSettings() {
+        settingsDraft = GameSettingsDraft.from(state)
+        destination = GameDestination.Settings
+    }
+
+    fun completeSettings() {
+        val draft = currentSettingsDraft()
+        if (draft.isDifferentFrom(state)) {
+            viewModel.applySettings(
+                wordListId = draft.wordListId,
+                rows = draft.rows,
+                cols = draft.cols
+            )
+        }
+        settingsDraft = null
+        destination = GameDestination.Game
+    }
 
     // Scaffold：脚手架组件，提供标准的Material3页面结构
     // topBar：顶部应用栏
@@ -103,7 +126,7 @@ fun GameScreen(
                 actions = {
                     if (destination == GameDestination.Settings) {
                         TextButton(
-                            onClick = { destination = GameDestination.Game },
+                            onClick = { completeSettings() },
                             colors = ButtonDefaults.textButtonColors(
                                 contentColor = MaterialTheme.colorScheme.onPrimary
                             )
@@ -112,7 +135,7 @@ fun GameScreen(
                         }
                     } else {
                         TextButton(
-                            onClick = { destination = GameDestination.Settings },
+                            onClick = { openSettings() },
                             colors = ButtonDefaults.textButtonColors(
                                 contentColor = MaterialTheme.colorScheme.onPrimary
                             )
@@ -152,12 +175,16 @@ fun GameScreen(
         ) {
             // when表达式：类似于switch，根据条件显示不同UI
             if (destination == GameDestination.Settings) {
+                val draft = currentSettingsDraft()
+
                 GameSettingsScreen(
                     state = state,
-                    onSelectWordList = { viewModel.selectWordList(it) },
-                    onGridSizeChange = { rows, cols -> viewModel.resizeGrid(rows, cols) },
+                    draft = draft,
+                    onDraftChange = { settingsDraft = it },
                     onImportWordList = { name, entries ->
-                        viewModel.addCustomWordList(name, entries)
+                        viewModel.addCustomWordList(name, entries) { createdId ->
+                            settingsDraft = currentSettingsDraft().withWordList(createdId)
+                        }
                     }
                 )
             } else when {

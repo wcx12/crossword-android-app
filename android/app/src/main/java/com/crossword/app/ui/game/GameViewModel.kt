@@ -63,16 +63,29 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    fun addCustomWordList(name: String, entries: List<WordEntry>) {
+    fun applySettings(wordListId: String, rows: Int, cols: Int) {
+        startNewGame(
+            wordListId = wordListId,
+            rows = rows,
+            cols = cols
+        )
+    }
+
+    fun addCustomWordList(
+        name: String,
+        entries: List<WordEntry>,
+        onCreated: (String) -> Unit = {}
+    ) {
         if (entries.isEmpty()) return
 
         viewModelScope.launch(Dispatchers.IO) {
             val info = storage.addCustomList(name.ifBlank { "自定义词库" }, entries)
-            startNewGame(
-                wordListId = info.id,
-                rows = _state.value.gridRows,
-                cols = _state.value.gridCols
-            )
+            val lists = storage.getWordLists()
+
+            withContext(Dispatchers.Main) {
+                _state.update { it.copy(wordLists = lists) }
+                onCreated(info.id)
+            }
         }
     }
 
