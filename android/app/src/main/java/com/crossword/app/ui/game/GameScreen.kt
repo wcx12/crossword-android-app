@@ -151,6 +151,11 @@ fun GameScreen(
                     GameContent(
                         // state：完整游戏状态
                         state = state,
+                        onSelectWordList = { viewModel.selectWordList(it) },
+                        onGridSizeChange = { rows, cols -> viewModel.resizeGrid(rows, cols) },
+                        onImportWordList = { name, entries ->
+                            viewModel.addCustomWordList(name, entries)
+                        },
                         // onCellClick：格子点击回调
                         // lambda语法：lambda表达式作为最后一个参数可放在括号外
                         onCellClick = { row, col -> viewModel.selectCell(row, col) },
@@ -295,6 +300,9 @@ private fun EmptyView(
 @Composable
 private fun GameContent(
     state: GameState,                                              // 游戏状态
+    onSelectWordList: (String) -> Unit,
+    onGridSizeChange: (Int, Int) -> Unit,
+    onImportWordList: (String, List<com.crossword.app.data.model.WordEntry>) -> Unit,
     onCellClick: (Int, Int) -> Unit,                              // (row, col)点击回调
     onToggleDirection: () -> Unit,                                 // 切换方向回调
     onSetDirection: (Direction) -> Unit,                           // 设置方向回调
@@ -312,6 +320,13 @@ private fun GameContent(
         // fillMaxSize：填满可用空间
         modifier = Modifier.fillMaxSize()
     ) {
+        GameSetupPanel(
+            state = state,
+            onSelectWordList = onSelectWordList,
+            onGridSizeChange = onGridSizeChange,
+            onImportWordList = onImportWordList
+        )
+
         // 顶部提示栏
         HintBar(
             // currentWord：当前选中的词语
@@ -353,6 +368,8 @@ private fun GameContent(
 
         // Keyboard：字母键盘组件
         Keyboard(
+            inputMode = state.inputMode,
+            candidateChars = state.candidateChars,
             // onLetterClick：字母点击回调
             onLetterClick = onLetterInput,
             // onDeleteClick：删除按钮回调
@@ -532,13 +549,20 @@ private fun DirectionButton(
 // @param modifier：修饰符
 @Composable
 private fun Keyboard(
+    inputMode: InputMode,
+    candidateChars: List<Char>,
     onLetterClick: (Char) -> Unit,  // 字母点击回调，Char参数是点击的字母
     onDeleteClick: () -> Unit,      // 删除回调
     modifier: Modifier = Modifier   // 可选修饰符，有默认值
 ) {
     // toList()：将String转为List<Char>
     // "ABCDEFGHIJKLMNOPQRSTUVWXYZ"是26个大写字母
-    val letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".toList()
+    val letters = if (inputMode == InputMode.CANDIDATE_CHARS && candidateChars.isNotEmpty()) {
+        candidateChars
+    } else {
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ".toList()
+    }
+    val chunkSize = if (inputMode == InputMode.CANDIDATE_CHARS) 8 else 9
 
     // Column：垂直布局
     Column(
@@ -553,7 +577,16 @@ private fun Keyboard(
         // chunked(9)：将列表分块，每块9个元素
         // "ABCDEFGHIJKLMNOPQRSTUVWXYZ"分成：
         // [A-I], [J-R], [S-Z](7个)
-        letters.chunked(9).forEach { row ->
+        if (inputMode == InputMode.CANDIDATE_CHARS && candidateChars.isNotEmpty()) {
+            Text(
+                text = "候选字",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+        }
+
+        letters.chunked(chunkSize).take(4).forEach { row ->
             // Row：每行9个字母
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -565,6 +598,7 @@ private fun Keyboard(
                     // KeyButton：单个字母按钮
                     KeyButton(
                         letter = letter,                          // 当前字母
+                        isCandidate = inputMode == InputMode.CANDIDATE_CHARS,
                         onClick = { onLetterClick(letter) }       // 点击回调
                     )
                 }
@@ -598,13 +632,17 @@ private fun Keyboard(
 @Composable
 private fun KeyButton(
     letter: Char,            // 字母字符
+    isCandidate: Boolean = false,
     onClick: () -> Unit      // 点击回调
 ) {
     // Surface：按钮表面
+    val buttonSize = if (isCandidate) 42.dp else 36.dp
+    val textSize = if (isCandidate) 18.sp else 16.sp
+
     Surface(
         modifier = Modifier
             // size：固定尺寸36dp x 36dp
-            .size(36.dp)
+            .size(buttonSize)
             // padding：内边距2dp
             .padding(2.dp)
             // clickable：点击事件处理
@@ -628,7 +666,7 @@ private fun KeyButton(
                 // fontWeight：中等粗细
                 fontWeight = FontWeight.Medium,
                 // fontSize：字体大小16sp
-                fontSize = 16.sp
+                fontSize = textSize
             )
         }
     }
