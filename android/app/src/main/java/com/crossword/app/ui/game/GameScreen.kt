@@ -183,9 +183,9 @@ fun GameScreen(
     // 区别：when用于分支选择，if用于单一条件判断
 
     // state.isSolved：游戏是否已解决（所有字母正确）
-    if (state.isSolved) {
+    if (state.showSolvedDialog) {
         // SolvedDialog：庆祝弹窗组件
-        SolvedDialog()
+        SolvedDialog(onDismiss = { viewModel.dismissSolvedDialog() })
     }
 }
 
@@ -671,12 +671,12 @@ private fun FunctionKey(
 
 // SolvedDialog：游戏完成弹窗
 @Composable
-private fun SolvedDialog() {
+private fun SolvedDialog(onDismiss: () -> Unit) {
     // AlertDialog：Material3警告对话框
     AlertDialog(
         // onDismissRequest：点击对话框外部或返回键时的回调
         // 空实现表示不可通过这些方式关闭
-        onDismissRequest = { },
+        onDismissRequest = onDismiss,
         // title：对话框标题
         title = { Text("恭喜！") },
         // text：对话框内容
@@ -685,7 +685,7 @@ private fun SolvedDialog() {
         confirmButton = {
             // TextButton：文本按钮
             TextButton(
-                onClick = { /* 关闭对话框 */ }  // 空实现，实际通过状态控制关闭
+                onClick = onDismiss
             ) {
                 Text("确定")
             }
