@@ -19,7 +19,9 @@ class WordListStorage(private val context: Context) {
     }
 
     fun setCurrentWordListId(id: String) {
-        prefs.edit().putString(KEY_CURRENT_WORD_LIST_ID, id).apply()
+        prefs.edit()
+            .putString(KEY_CURRENT_WORD_LIST_ID, id)
+            .commitOrThrow("current word list")
     }
 
     fun getGridSize(): Pair<Int, Int> {
@@ -33,7 +35,7 @@ class WordListStorage(private val context: Context) {
         prefs.edit()
             .putInt(KEY_GRID_ROWS, rows)
             .putInt(KEY_GRID_COLS, cols)
-            .apply()
+            .commitOrThrow("grid size")
     }
 
     fun loadWords(info: WordListInfo): List<WordEntry> {
@@ -56,18 +58,32 @@ class WordListStorage(private val context: Context) {
             language = if (entries.any { it.containsHan() }) Language.ZH else Language.EN
         )
 
-        customDirectory().mkdirs()
-        customFile(id).writeText(CustomWordListCodec.encodeEntries(entries))
-        saveCustomLists(getCustomLists() + info)
+        val directory = customDirectory()
+        check(directory.exists() || directory.mkdirs()) {
+            "Failed to create custom word list directory"
+        }
+
+        val file = customFile(id)
+        file.writeText(CustomWordListCodec.encodeEntries(entries))
+        try {
+            saveCustomLists(getCustomLists() + info)
+        } catch (error: IllegalStateException) {
+            file.delete()
+            throw error
+        }
         return info
     }
 
     fun deleteCustomList(id: String) {
         saveCustomLists(getCustomLists().filterNot { it.id == id })
-        customFile(id).delete()
 
         if (getCurrentWordListId() == id) {
             setCurrentWordListId(WordListCatalog.DEFAULT_WORD_LIST_ID)
+        }
+
+        val file = customFile(id)
+        check(!file.exists() || file.delete()) {
+            "Failed to delete custom word list file"
         }
     }
 
@@ -86,7 +102,7 @@ class WordListStorage(private val context: Context) {
     private fun saveCustomLists(infos: List<WordListInfo>) {
         prefs.edit()
             .putString(KEY_CUSTOM_METADATA, CustomWordListCodec.encodeMetadata(infos))
-            .apply()
+            .commitOrThrow("custom word list metadata")
     }
 
     private fun customDirectory(): File {
@@ -103,6 +119,10 @@ class WordListStorage(private val context: Context) {
 
     private fun String.hasHan(): Boolean {
         return any { it in '\u4e00'..'\u9fff' }
+    }
+
+    private fun android.content.SharedPreferences.Editor.commitOrThrow(label: String) {
+        check(commit()) { "Failed to persist $label" }
     }
 
     companion object {

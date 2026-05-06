@@ -60,4 +60,19 @@ class CustomWordListCodecTest {
         assertEquals("PYTHON A programming language\nJAVA", encoded)
         assertEquals(entries, WordFileParser.parse(encoded))
     }
+
+    @Test
+    fun encodeEntriesKeepsCluesOnSingleParserCompatibleLines() {
+        val entries = listOf(
+            WordEntry("PYTHON", "First line\r\nSecond line\nThird line")
+        )
+
+        val encoded = CustomWordListCodec.encodeEntries(entries)
+
+        assertEquals("PYTHON First line Second line Third line", encoded)
+        assertEquals(
+            listOf(WordEntry("PYTHON", "First line Second line Third line")),
+            WordFileParser.parse(encoded)
+        )
+    }
 }

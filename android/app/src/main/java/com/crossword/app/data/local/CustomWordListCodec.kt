@@ -47,8 +47,13 @@ object CustomWordListCodec {
 
     fun encodeEntries(entries: List<WordEntry>): String {
         return entries.joinToString(separator = "\n") { entry ->
-            if (entry.clue.isBlank()) entry.word else "${entry.word} ${entry.clue}"
+            val clue = entry.clue.toSingleLine()
+            if (clue.isBlank()) entry.word else "${entry.word} $clue"
         }
+    }
+
+    private fun String.toSingleLine(): String {
+        return replace(Regex("[\\r\\n]+"), " ").trim()
     }
 
     private fun String.escapeField(): String {
