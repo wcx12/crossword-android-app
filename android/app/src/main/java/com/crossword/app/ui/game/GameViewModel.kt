@@ -13,7 +13,9 @@ import com.crossword.app.domain.model.Crossword
 import com.crossword.app.domain.model.Direction
 import com.crossword.app.domain.model.WordPlacement
 import com.crossword.app.domain.usecase.CrosswordGenerator
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +25,9 @@ import kotlinx.coroutines.withContext
 
 class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val storage = WordListStorage(application)
+    private val generationRequests = GameGenerationRequests()
     private val _state = MutableStateFlow(GameState())
+    private var generationJob: Job? = null
 
     val state: StateFlow<GameState> = _state.asStateFlow()
 
@@ -248,50 +252,68 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun startNewGame(wordListId: String, rows: Int, cols: Int) {
+        val requestId = generationRequests.next()
         val safeRows = rows.coerceIn(MIN_GRID_SIZE, MAX_GRID_SIZE)
         val safeCols = cols.coerceIn(MIN_GRID_SIZE, MAX_GRID_SIZE)
 
-        _state.update {
-            it.copy(
-                isLoading = true,
-                errorMessage = null,
-                gridRows = safeRows,
-                gridCols = safeCols,
-                showSolvedDialog = false
-            )
+        generationJob?.cancel()
+
+        generationRequests.runIfCurrent(requestId) {
+            _state.update {
+                it.copy(
+                    isLoading = true,
+                    errorMessage = null,
+                    gridRows = safeRows,
+                    gridCols = safeCols,
+                    showSolvedDialog = false
+                )
+            }
         }
 
-        viewModelScope.launch(Dispatchers.IO) {
+        generationJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 val lists = storage.getWordLists()
                 val selectedInfo = resolveWordList(lists, wordListId)
                 val words = storage.loadWords(selectedInfo)
 
-                storage.setCurrentWordListId(selectedInfo.id)
-                storage.setGridSize(safeRows, safeCols)
+                val persisted = generationRequests.runIfCurrent(requestId) {
+                    storage.setCurrentWordListId(selectedInfo.id)
+                    storage.setGridSize(safeRows, safeCols)
+                }
+                if (!persisted) return@launch
 
                 val crossword = withContext(Dispatchers.Default) {
                     CrosswordGenerator(rows = safeRows, cols = safeCols)
                         .generate(words, timeLimit = 3f)
                 }
 
+                if (!generationRequests.isCurrent(requestId)) return@launch
+
                 withContext(Dispatchers.Main) {
-                    applyGeneratedGame(
-                        crossword = crossword,
-                        wordLists = lists,
-                        selectedInfo = selectedInfo,
-                        rows = safeRows,
-                        cols = safeCols,
-                        wordCount = words.size
-                    )
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    _state.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = "生成失败: ${e.message}"
+                    generationRequests.runIfCurrent(requestId) {
+                        applyGeneratedGame(
+                            crossword = crossword,
+                            wordLists = lists,
+                            selectedInfo = selectedInfo,
+                            rows = safeRows,
+                            cols = safeCols,
+                            wordCount = words.size
                         )
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (!generationRequests.isCurrent(requestId)) return@launch
+
+                withContext(Dispatchers.Main) {
+                    generationRequests.runIfCurrent(requestId) {
+                        _state.update {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = "生成失败: ${e.message}"
+                            )
+                        }
                     }
                 }
             }
