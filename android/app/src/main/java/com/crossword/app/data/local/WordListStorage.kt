@@ -38,6 +38,16 @@ class WordListStorage(private val context: Context) {
             .commitOrThrow("grid size")
     }
 
+    fun getPlayMode(): String {
+        return prefs.getString(KEY_PLAY_MODE, DEFAULT_PLAY_MODE) ?: DEFAULT_PLAY_MODE
+    }
+
+    fun setPlayMode(playMode: String) {
+        prefs.edit()
+            .putString(KEY_PLAY_MODE, playMode)
+            .commitOrThrow("play mode")
+    }
+
     fun loadWords(info: WordListInfo): List<WordEntry> {
         return if (info.isSystem) {
             DefaultWordLoader.load(context, info.assetPath!!)
@@ -131,8 +141,10 @@ class WordListStorage(private val context: Context) {
         const val KEY_CURRENT_WORD_LIST_ID = "current_word_list_id"
         const val KEY_GRID_ROWS = "grid_rows"
         const val KEY_GRID_COLS = "grid_cols"
+        const val KEY_PLAY_MODE = "play_mode"
         const val CUSTOM_DIR = "custom_wordlists"
 
         private const val DEFAULT_GRID_SIZE = 13
+        private const val DEFAULT_PLAY_MODE = "reveal_word"
     }
 }

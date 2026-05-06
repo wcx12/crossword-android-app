@@ -12,6 +12,7 @@ local.properties
 # Misc
 *.log
 .DS_Store
+dist/
 
 # Local worktrees
 .worktrees/

@@ -15,6 +15,8 @@ class GameStateTest {
         assertEquals("", state.currentWordListName)
         assertEquals(13, state.gridRows)
         assertEquals(13, state.gridCols)
+        assertEquals(GamePlayMode.REVEAL_WORD, state.playMode)
+        assertEquals(emptySet<Int>(), state.revealedWordIds)
         assertEquals(InputMode.LETTERS, state.inputMode)
         assertEquals(emptyList<Char>(), state.candidateChars)
         assertFalse(state.showSolvedDialog)

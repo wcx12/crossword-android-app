@@ -20,6 +20,7 @@ class GameSettingsDraftTest {
         assertEquals(WordListCatalog.DEFAULT_WORD_LIST_ID, draft.wordListId)
         assertEquals(12, draft.rows)
         assertEquals(14, draft.cols)
+        assertEquals(GamePlayMode.REVEAL_WORD, draft.playMode)
         assertFalse(draft.isDifferentFrom(state))
     }
 
@@ -32,6 +33,15 @@ class GameSettingsDraftTest {
         assertEquals(13, state.gridCols)
         assertEquals(16, draft.rows)
         assertEquals(15, draft.cols)
+        assertTrue(draft.isDifferentFrom(state))
+    }
+
+    @Test
+    fun changingPlayModeMakesDraftDifferentFromAppliedState() {
+        val state = GameState(playMode = GamePlayMode.REVEAL_WORD)
+        val draft = GameSettingsDraft.from(state).withPlayMode(GamePlayMode.FILL_WORD)
+
+        assertEquals(GamePlayMode.FILL_WORD, draft.playMode)
         assertTrue(draft.isDifferentFrom(state))
     }
 }

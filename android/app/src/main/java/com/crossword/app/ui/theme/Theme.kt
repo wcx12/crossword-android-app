@@ -17,10 +17,15 @@ private val LightColorScheme = lightColorScheme(
     secondary = CellHighlight,
     background = Color(0xFFFAFAFA),
     surface = Color.White,
+    surfaceVariant = Color(0xFFF0F0F0),
+    primaryContainer = Color(0xFFE7E7E7),
+    onPrimaryContainer = TextPrimary,
     onPrimary = TextOnDark,
     onSecondary = TextPrimary,
     onBackground = TextPrimary,
     onSurface = TextPrimary,
+    onSurfaceVariant = TextSecondary,
+    outline = Color(0xFF666666)
 )
 
 private val DarkColorScheme = darkColorScheme(

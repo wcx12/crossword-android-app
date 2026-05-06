@@ -94,7 +94,8 @@ fun GameScreen(
             viewModel.applySettings(
                 wordListId = draft.wordListId,
                 rows = draft.rows,
-                cols = draft.cols
+                cols = draft.cols,
+                playMode = draft.playMode
             )
         }
         settingsDraft = null
@@ -224,6 +225,7 @@ fun GameScreen(
                         onDelete = { viewModel.deleteLetter() },
                         // onShowSolution：显示答案回调
                         onShowSolution = { viewModel.showSolution() },
+                        onShowAllSolutions = { viewModel.showAllSolutions() },
                         // onHideSolution：隐藏答案回调
                         onHideSolution = { viewModel.hideSolution() }
                     )
@@ -361,11 +363,17 @@ private fun GameContent(
     onLetterInput: (Char) -> Unit,                                 // 字母输入回调
     onDelete: () -> Unit,                                          // 删除回调
     onShowSolution: () -> Unit,                                    // 显示答案回调
+    onShowAllSolutions: () -> Unit,                                // 显示全部答案回调
     onHideSolution: () -> Unit                                     // 隐藏答案回调
 ) {
     // !!操作符：强制解包crossword
     // 由于state.crossword在GameContent中非空，所以可以安全解包
     val crossword = state.crossword!!
+    val isCurrentWordRevealed = GameWordReveal.isRevealed(
+        currentWord = state.currentWord,
+        revealedWordIds = state.revealedWordIds
+    )
+    val revealedWords = crossword.placements.filter { it.id in state.revealedWordIds }
 
     // Column：垂直布局容器
     Column(
@@ -378,15 +386,17 @@ private fun GameContent(
             currentWord = state.currentWord,
             // direction：当前方向
             direction = state.currentDirection,
+            playMode = state.playMode,
+            isWordRevealed = isCurrentWordRevealed,
             // showSolution：是否显示答案
             showSolution = state.showSolution,
             // onToggleDirection：切换方向回调
             onToggleDirection = onToggleDirection,
             // onSetDirection：设置方向回调
             onSetDirection = onSetDirection,
-            // onShowSolution：显示/隐藏答案回调（三元表达式）
-            // 如果当前正在显示答案，则点击应隐藏；否则点击应显示
-            onShowSolution = if (state.showSolution) onHideSolution else onShowSolution
+            onShowSolution = onShowSolution,
+            onShowAllSolutions = onShowAllSolutions,
+            onHideSolution = onHideSolution
         )
 
         // CrosswordGrid：纵横字谜网格组件
@@ -403,6 +413,8 @@ private fun GameContent(
             currentDirection = state.currentDirection,
             // showSolution：是否显示答案
             showSolution = state.showSolution,
+            revealedWords = revealedWords,
+            showCellInputs = state.playMode == GamePlayMode.FILL_WORD,
             // onCellClick：格子点击回调
             onCellClick = onCellClick,
             // modifier：配置weight使网格占据剩余空间
@@ -411,17 +423,19 @@ private fun GameContent(
                 .fillMaxWidth()  // 宽度填满
         )
 
-        // Keyboard：字母键盘组件
-        Keyboard(
-            inputMode = state.inputMode,
-            candidateChars = state.candidateChars,
-            // onLetterClick：字母点击回调
-            onLetterClick = onLetterInput,
-            // onDeleteClick：删除按钮回调
-            onDeleteClick = onDelete,
-            // modifier：添加padding
-            modifier = Modifier.padding(8.dp)
-        )
+        if (state.playMode == GamePlayMode.FILL_WORD) {
+            // Keyboard：字母键盘组件
+            Keyboard(
+                inputMode = state.inputMode,
+                candidateChars = state.candidateChars,
+                // onLetterClick：字母点击回调
+                onLetterClick = onLetterInput,
+                // onDeleteClick：删除按钮回调
+                onDeleteClick = onDelete,
+                // modifier：添加padding
+                modifier = Modifier.padding(8.dp)
+            )
+        }
     }
 }
 
@@ -437,10 +451,14 @@ private fun HintBar(
     // currentWord：当前词语，可为null
     currentWord: com.crossword.app.domain.model.WordPlacement?,
     direction: Direction,                                         // 当前方向
+    playMode: GamePlayMode,
+    isWordRevealed: Boolean,
     showSolution: Boolean,                                       // 是否显示答案
     onToggleDirection: () -> Unit,                               // 切换方向回调
     onSetDirection: (Direction) -> Unit,                         // 设置方向回调
-    onShowSolution: () -> Unit                                    // 显示/隐藏答案回调
+    onShowSolution: () -> Unit,                                  // 显示当前词答案回调
+    onShowAllSolutions: () -> Unit,                              // 显示全部答案回调
+    onHideSolution: () -> Unit                                   // 隐藏答案回调
 ) {
     // Row：水平布局容器，子组件从左到右排列
     Row(
@@ -480,13 +498,13 @@ private fun HintBar(
                 // 线索文本
                 Text(
                     // clue.ifEmpty { word }：如果clue为空，显示单词本身
-                    text = currentWord.clue.ifEmpty { currentWord.word },
+                    text = currentWord.clue.ifEmpty { "暂无提示" },
                     style = MaterialTheme.typography.bodyMedium
                 )
             } else {
                 // 没有选中词语时的提示
                 Text(
-                    text = "点击格子开始",
+                    text = if (playMode == GamePlayMode.REVEAL_WORD) "点击格子查看词语" else "点击格子开始",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -516,13 +534,23 @@ private fun HintBar(
             )
         }
 
-        // 显示答案按钮
-        // TextButton：文本按钮，无背景
-        TextButton(
-            onClick = onShowSolution
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // if表达式决定按钮文字
-            Text(if (showSolution) "隐藏答案" else "显示答案")
+            if (playMode == GamePlayMode.REVEAL_WORD && currentWord != null && !showSolution && !isWordRevealed) {
+                TextButton(
+                    onClick = onShowSolution
+                ) {
+                    Text("显示本词")
+                }
+            }
+
+            TextButton(
+                onClick = if (showSolution) onHideSolution else onShowAllSolutions
+            ) {
+                Text(if (showSolution) "隐藏全部" else if (playMode == GamePlayMode.REVEAL_WORD) "显示全部" else "显示答案")
+            }
         }
     }
 }
@@ -537,51 +565,35 @@ private fun DirectionButton(
     isSelected: Boolean,      // 是否选中
     onClick: () -> Unit      // 点击回调
 ) {
-    // 根据是否选中决定背景色
-    val backgroundColor = if (isSelected) {
-        // 选中时：使用主题的primaryContainer颜色
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        // 未选中时：使用主题的surface颜色
-        MaterialTheme.colorScheme.surface
-    }
-
-    // 根据是否选中决定文字颜色
-    val textColor = if (isSelected) {
-        // 选中时：使用主题的onPrimaryContainer颜色
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        // 未选中时：使用主题的onSurface颜色
-        MaterialTheme.colorScheme.onSurface
-    }
+    val displayText = DirectionButtonLabel.text(text, isSelected)
+    val borderColor = if (isSelected) Color.Black else Color.Gray
+    val borderWidth = if (isSelected) 4.dp else 1.dp
 
     // Surface：表面容器，提供背景和形状
     Surface(
         modifier = Modifier
             // border：边框
-            // width：边框宽度2dp
-            // color：边框颜色，选中用primary，未选中用outline
+            // 选中时使用更粗的黑色边框，避免只依赖颜色差异
             // shape：圆角矩形，8dp圆角
             .border(
-                width = 2.dp,
-                color = if (isSelected) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.outline,
+                width = borderWidth,
+                color = borderColor,
                 shape = RoundedCornerShape(8.dp)
             )
             // clickable：添加点击效果
             .clickable { onClick() },
         // color：背景色
-        color = backgroundColor,
+        color = MaterialTheme.colorScheme.surface,
         // shape：形状，圆角矩形
         shape = RoundedCornerShape(8.dp)
     ) {
         // Text：按钮文字
         Text(
-            text = text,
+            text = displayText,
             // modifier：padding
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             // color：文字颜色
-            color = textColor,
+            color = MaterialTheme.colorScheme.onSurface,
             // fontWeight：字体粗细，选中时加粗
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )

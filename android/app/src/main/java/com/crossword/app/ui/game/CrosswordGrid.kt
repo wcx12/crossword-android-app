@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 
 // horizontalScroll：水平滚动容器
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 
 // layout相关组件
 import androidx.compose.foundation.layout.*
@@ -30,6 +31,7 @@ import androidx.compose.material3.Text
 
 // compose运行时：@Composable注解标记Compose函数
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 
 // Alignment对齐方式
 import androidx.compose.ui.Alignment
@@ -89,6 +91,8 @@ fun CrosswordGrid(
     currentWords: List<WordPlacement> = emptyList(),
     currentDirection: Direction,             // 当前方向
     showSolution: Boolean,                   // 是否显示答案
+    revealedWords: List<WordPlacement> = emptyList(),
+    showCellInputs: Boolean = true,
     onCellClick: (Int, Int) -> Unit,        // 点击回调
     modifier: Modifier = Modifier            // 修饰符
 ) {
@@ -100,7 +104,8 @@ fun CrosswordGrid(
      */
     BoxWithConstraints(
         // modifier：添加padding
-        modifier = modifier.padding(4.dp)
+        modifier = modifier.padding(2.dp),
+        contentAlignment = Alignment.Center
     ) {
         /**
          * 动态计算格子大小
@@ -108,8 +113,8 @@ fun CrosswordGrid(
          * 目标：使网格适应屏幕，同时保持正方形格子
          */
 
-        // scale：缩放系数，0.85使网格稍小以留出边距
-        val scale = 0.85f
+        // scale：缩放系数，尽量占满可用空间，同时留少量边距
+        val scale = 0.98f
 
         // maxOf/minOf：取最大/最小值
         // maxWidth：BoxWithConstraints提供的父组件最大宽度
@@ -129,10 +134,10 @@ fun CrosswordGrid(
 
         // maxOf(24.dp, minOf(...))：确保格子不小于24dp
         // minOf(..., 36.dp)：确保格子不大于36dp
-        val cellSize = maxOf(24.dp, minOf(maxCellSize, 36.dp))
+        val cellSize = minOf(maxCellSize, 64.dp)
 
         // Column：垂直布局，显示所有行
-        Column {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             // for循环：遍历每一行
             // 0 until crossword.rows：范围表达式，左闭右开
             // 等同于0..<crossword.rows 或 rangeTo(crossword.rows)
@@ -159,6 +164,7 @@ fun CrosswordGrid(
                             val cellPosition = Pair(row, col)
                             val isInCurrentWord = currentWord?.getCells()?.contains(cellPosition) == true
                             val isInRelatedWord = currentWords.any { it.getCells().contains(cellPosition) }
+                            val isInRevealedWord = revealedWords.any { it.getCells().contains(cellPosition) }
 
                             /**
                              * CellView - 单个格子组件
@@ -175,8 +181,8 @@ fun CrosswordGrid(
                                 // isInCurrentWord：是否在当前词语中
                                 isInCurrentWord = isInCurrentWord,
                                 isInRelatedWord = isInRelatedWord,
-                                // showSolution：是否显示答案
-                                showSolution = showSolution,
+                                showAnswer = showSolution || isInRevealedWord,
+                                showCellInputs = showCellInputs,
                                 // cellSize：格子尺寸
                                 cellSize = cellSize,
                                 // onClick：点击回调
@@ -214,7 +220,8 @@ private fun CellView(
     isSelected: Boolean,           // 是否选中
     isInCurrentWord: Boolean,      // 是否在当前词语中
     isInRelatedWord: Boolean,      // 是否在当前格子从属的其他词语中
-    showSolution: Boolean,         // 是否显示答案
+    showAnswer: Boolean,           // 是否显示答案
+    showCellInputs: Boolean,       // 是否显示用户输入
     cellSize: Dp,                  // 格子尺寸
     onClick: () -> Unit            // 点击回调
 ) {
@@ -244,14 +251,22 @@ private fun CellView(
     val textColor = when {
         // 是墙格子 → 透明色（不显示文字）
         cell.isBlocked -> Color.Transparent
+        isSelected -> TextOnDark
         // 有输入字母且显示答案模式
-        cell.char != null && showSolution -> {
+        cell.char != null && showAnswer && showCellInputs -> {
             // isCorrect：比较用户输入和正确答案
             if (cell.isCorrect) CellCorrect else CellIncorrect
         }
         // 默认：主要文字颜色
         else -> TextPrimary
     }
+
+    val borderColor = when {
+        isSelected || isInCurrentWord -> Color.Black
+        isInRelatedWord -> Color.DarkGray
+        else -> Color.Gray
+    }
+    val borderWidth = if (isSelected || isInCurrentWord) 2.dp else 1.dp
 
     /**
      * 查找格子左上角的横排标号
@@ -311,10 +326,14 @@ private fun CellView(
             // background：背景色
             .background(backgroundColor)
             // border：边框，1dp灰色
-            .border(1.dp, Color.Gray)
+            .border(borderWidth, borderColor)
             // clickable：点击事件
             // enabled：是否启用点击，墙格子禁用
-            .clickable(enabled = !cell.isBlocked) { onClick() },
+            .clickable(
+                enabled = !cell.isBlocked,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onClick() },
         // contentAlignment：内容对齐方式，Center居中
         contentAlignment = Alignment.Center
     ) {
@@ -360,14 +379,11 @@ private fun CellView(
         /**
          * 确定显示的字母
          */
-        val displayChar = when {
-            // 显示答案模式且非墙 → 显示正确答案（小写）
-            showSolution && !cell.isBlocked -> cell.solutionChar?.lowercaseChar()
-            // 非墙且有输入 → 显示用户输入
-            !cell.isBlocked -> cell.char
-            // 其他情况 → null（墙格子不显示）
-            else -> null
-        }
+        val displayChar = GameCellAnswerDisplay.displayChar(
+            cell = cell,
+            showAnswer = showAnswer,
+            showCellInput = showCellInputs
+        )
 
         /**
          * 字母文本

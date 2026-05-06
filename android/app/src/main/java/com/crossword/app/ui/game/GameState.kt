@@ -11,6 +11,17 @@ enum class InputMode {
     CANDIDATE_CHARS
 }
 
+enum class GamePlayMode(val storageValue: String) {
+    REVEAL_WORD("reveal_word"),
+    FILL_WORD("fill_word");
+
+    companion object {
+        fun fromStorageValue(value: String?): GamePlayMode {
+            return entries.firstOrNull { it.storageValue == value } ?: REVEAL_WORD
+        }
+    }
+}
+
 data class GameState(
     val crossword: Crossword? = null,
     val isLoading: Boolean = false,
@@ -27,6 +38,8 @@ data class GameState(
     val currentWordListName: String = "",
     val gridRows: Int = 13,
     val gridCols: Int = 13,
+    val playMode: GamePlayMode = GamePlayMode.REVEAL_WORD,
+    val revealedWordIds: Set<Int> = emptySet(),
     val inputMode: InputMode = InputMode.LETTERS,
     val candidateChars: List<Char> = emptyList()
 )

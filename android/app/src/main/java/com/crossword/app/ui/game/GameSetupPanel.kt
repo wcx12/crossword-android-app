@@ -62,7 +62,7 @@ fun GameSettingsScreen(
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
-                text = "选择题库、调整行列，或导入自己的词条。点击完成后会生成新棋盘。",
+                text = "选择玩法、题库和行列。点击完成后应用配置。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -92,49 +92,32 @@ fun GameSetupPanel(
     }
     val currentWordListName = selectedList?.name.orEmpty().ifBlank { "未选择词库" }
 
-    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val horizontal = maxWidth >= 520.dp
-        val contentModifier = Modifier.fillMaxWidth()
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        PlayModeSelector(
+            playMode = draft.playMode,
+            onPlayModeChange = { onDraftChange(draft.withPlayMode(it)) }
+        )
 
-        if (horizontal) {
-            Row(
-                modifier = contentModifier,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                WordListSelector(
-                    label = currentWordListName,
-                    state = state,
-                    selectedWordListId = draft.wordListId,
-                    onSelectWordList = { onDraftChange(draft.withWordList(it)) },
-                    modifier = Modifier.weight(1f)
-                )
-                GridSizeControls(
-                    rows = draft.rows,
-                    cols = draft.cols,
-                    onGridSizeChange = { rows, cols ->
-                        onDraftChange(draft.withGridSize(rows, cols))
-                    }
-                )
-                ImportWordListButton(onClick = { showImportDialog = true })
-            }
-        } else {
-            Column(
-                modifier = contentModifier,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                WordListSelector(
-                    label = currentWordListName,
-                    state = state,
-                    selectedWordListId = draft.wordListId,
-                    onSelectWordList = { onDraftChange(draft.withWordList(it)) },
-                    modifier = Modifier.fillMaxWidth()
-                )
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val horizontal = maxWidth >= 520.dp
+            val contentModifier = Modifier.fillMaxWidth()
+
+            if (horizontal) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = contentModifier,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    WordListSelector(
+                        label = currentWordListName,
+                        state = state,
+                        selectedWordListId = draft.wordListId,
+                        onSelectWordList = { onDraftChange(draft.withWordList(it)) },
+                        modifier = Modifier.weight(1f)
+                    )
                     GridSizeControls(
                         rows = draft.rows,
                         cols = draft.cols,
@@ -143,6 +126,33 @@ fun GameSetupPanel(
                         }
                     )
                     ImportWordListButton(onClick = { showImportDialog = true })
+                }
+            } else {
+                Column(
+                    modifier = contentModifier,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    WordListSelector(
+                        label = currentWordListName,
+                        state = state,
+                        selectedWordListId = draft.wordListId,
+                        onSelectWordList = { onDraftChange(draft.withWordList(it)) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        GridSizeControls(
+                            rows = draft.rows,
+                            cols = draft.cols,
+                            onGridSizeChange = { rows, cols ->
+                                onDraftChange(draft.withGridSize(rows, cols))
+                            }
+                        )
+                        ImportWordListButton(onClick = { showImportDialog = true })
+                    }
                 }
             }
         }
@@ -153,6 +163,62 @@ fun GameSetupPanel(
             onDismiss = { showImportDialog = false },
             onImport = onImportWordList
         )
+    }
+}
+
+@Composable
+private fun PlayModeSelector(
+    playMode: GamePlayMode,
+    onPlayModeChange: (GamePlayMode) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "玩法",
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1
+        )
+        PlayModeButton(
+            text = "点击查看",
+            selected = playMode == GamePlayMode.REVEAL_WORD,
+            onClick = { onPlayModeChange(GamePlayMode.REVEAL_WORD) },
+            modifier = Modifier.weight(1f)
+        )
+        PlayModeButton(
+            text = "填字输入",
+            selected = playMode == GamePlayMode.FILL_WORD,
+            onClick = { onPlayModeChange(GamePlayMode.FILL_WORD) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun PlayModeButton(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colors = if (selected) {
+        ButtonDefaults.outlinedButtonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        )
+    } else {
+        ButtonDefaults.outlinedButtonColors()
+    }
+
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.height(40.dp),
+        colors = colors,
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+    ) {
+        Text(text = text, maxLines = 1)
     }
 }
 

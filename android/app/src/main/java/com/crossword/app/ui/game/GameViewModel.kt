@@ -32,10 +32,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     val state: StateFlow<GameState> = _state.asStateFlow()
 
     init {
+        val gridSize = storage.getGridSize()
         startNewGame(
             wordListId = storage.getCurrentWordListId(),
-            rows = storage.getGridSize().first,
-            cols = storage.getGridSize().second
+            rows = gridSize.first,
+            cols = gridSize.second,
+            playMode = GamePlayMode.fromStorageValue(storage.getPlayMode())
         )
     }
 
@@ -43,7 +45,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         startNewGame(
             wordListId = _state.value.currentWordListId,
             rows = rows,
-            cols = cols
+            cols = cols,
+            playMode = _state.value.playMode
         )
     }
 
@@ -51,7 +54,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         startNewGame(
             wordListId = id,
             rows = _state.value.gridRows,
-            cols = _state.value.gridCols
+            cols = _state.value.gridCols,
+            playMode = _state.value.playMode
         )
     }
 
@@ -59,15 +63,37 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         startNewGame(
             wordListId = _state.value.currentWordListId,
             rows = rows,
-            cols = cols
+            cols = cols,
+            playMode = _state.value.playMode
         )
     }
 
-    fun applySettings(wordListId: String, rows: Int, cols: Int) {
+    fun applySettings(wordListId: String, rows: Int, cols: Int, playMode: GamePlayMode) {
+        val safeRows = rows.coerceIn(MIN_GRID_SIZE, MAX_GRID_SIZE)
+        val safeCols = cols.coerceIn(MIN_GRID_SIZE, MAX_GRID_SIZE)
+        val needsNewGame = wordListId != _state.value.currentWordListId ||
+            safeRows != _state.value.gridRows ||
+            safeCols != _state.value.gridCols ||
+            _state.value.crossword == null
+
+        if (!needsNewGame) {
+            storage.setPlayMode(playMode.storageValue)
+            _state.update {
+                it.copy(
+                    playMode = playMode,
+                    showSolution = false,
+                    revealedWordIds = emptySet(),
+                    showSolvedDialog = false
+                )
+            }
+            return
+        }
+
         startNewGame(
             wordListId = wordListId,
             rows = rows,
-            cols = cols
+            cols = cols,
+            playMode = playMode
         )
     }
 
@@ -98,7 +124,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 startNewGame(
                     wordListId = storage.getCurrentWordListId(),
                     rows = _state.value.gridRows,
-                    cols = _state.value.gridCols
+                    cols = _state.value.gridCols,
+                    playMode = _state.value.playMode
                 )
             } else {
                 refreshWordLists()
@@ -147,10 +174,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 currentWord = null,
                 currentWords = emptyList(),
                 showSolution = false,
+                revealedWordIds = emptySet(),
                 isSolved = false,
                 showSolvedDialog = false,
                 gridRows = rows.coerceIn(MIN_GRID_SIZE, MAX_GRID_SIZE),
                 gridCols = cols.coerceIn(MIN_GRID_SIZE, MAX_GRID_SIZE),
+                playMode = _state.value.playMode,
                 candidateChars = candidates,
                 inputMode = GameInputNormalizer.inputModeFor(candidates)
             )
@@ -165,8 +194,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         val currentDir = _state.value.currentDirection
         val wordsAtCell = crossword.getWordsAt(row, col)
-        val newWord = wordsAtCell.firstOrNull { it.direction == currentDir }
-            ?: wordsAtCell.firstOrNull()
+        val newWord = GameWordSelector.selectWord(crossword, row, col, currentDir)
         val newDirection = newWord?.direction ?: currentDir
 
         _state.update {
@@ -193,10 +221,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         if (selected != null && crossword != null) {
             val wordsAtCell = crossword.getWordsAt(selected.first, selected.second)
-            val word = wordsAtCell.firstOrNull { it.direction == direction }
+            val word = GameWordSelector.selectWord(crossword, selected.first, selected.second, direction)
+            val newDirection = word?.direction ?: direction
             _state.update {
                 it.copy(
-                    currentDirection = direction,
+                    currentDirection = newDirection,
                     currentWord = word ?: it.currentWord,
                     currentWords = wordsAtCell
                 )
@@ -207,6 +236,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun inputLetter(letter: Char) {
+        if (_state.value.playMode != GamePlayMode.FILL_WORD) return
+
         val selected = _state.value.selectedCell ?: return
         val crossword = _state.value.crossword ?: return
         val cell = crossword.grid.getOrNull(selected.first)?.getOrNull(selected.second) ?: return
@@ -226,6 +257,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun deleteLetter() {
+        if (_state.value.playMode != GamePlayMode.FILL_WORD) return
+
         val selected = _state.value.selectedCell ?: return
         val crossword = _state.value.crossword ?: return
         val target = GameDeletionNavigator.findTarget(
@@ -256,6 +289,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun clearWord() {
+        if (_state.value.playMode != GamePlayMode.FILL_WORD) return
+
         val word = _state.value.currentWord ?: return
         val crossword = _state.value.crossword ?: return
         val newGrid = crossword.mutableCellCopy()
@@ -268,6 +303,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun showSolution() {
+        val currentWordId = _state.value.currentWord?.id ?: return
+        _state.update { it.copy(revealedWordIds = it.revealedWordIds + currentWordId) }
+    }
+
+    fun showAllSolutions() {
         _state.update { it.copy(showSolution = true) }
     }
 
@@ -279,7 +319,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _state.update { it.copy(showSolvedDialog = false) }
     }
 
-    private fun startNewGame(wordListId: String, rows: Int, cols: Int) {
+    private fun startNewGame(
+        wordListId: String,
+        rows: Int,
+        cols: Int,
+        playMode: GamePlayMode = _state.value.playMode
+    ) {
         val requestId = generationRequests.next()
         val safeRows = rows.coerceIn(MIN_GRID_SIZE, MAX_GRID_SIZE)
         val safeCols = cols.coerceIn(MIN_GRID_SIZE, MAX_GRID_SIZE)
@@ -293,6 +338,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     errorMessage = null,
                     gridRows = safeRows,
                     gridCols = safeCols,
+                    playMode = playMode,
+                    revealedWordIds = emptySet(),
                     showSolvedDialog = false
                 )
             }
@@ -307,6 +354,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 val persisted = generationRequests.runIfCurrent(requestId) {
                     storage.setCurrentWordListId(selectedInfo.id)
                     storage.setGridSize(safeRows, safeCols)
+                    storage.setPlayMode(playMode.storageValue)
                 }
                 if (!persisted) return@launch
 
@@ -325,6 +373,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                             selectedInfo = selectedInfo,
                             rows = safeRows,
                             cols = safeCols,
+                            playMode = playMode,
                             wordCount = words.size
                         )
                     }
@@ -354,6 +403,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         selectedInfo: WordListInfo,
         rows: Int,
         cols: Int,
+        playMode: GamePlayMode,
         wordCount: Int
     ) {
         if (crossword == null) {
@@ -365,6 +415,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     currentWordListName = selectedInfo.name,
                     gridRows = rows,
                     gridCols = cols,
+                    playMode = playMode,
+                    revealedWordIds = emptySet(),
                     errorMessage = "无法生成谜题，请尝试更多词条或更大的网格（当前词条: $wordCount）"
                 )
             }
@@ -380,6 +432,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 isSolved = false,
                 showSolvedDialog = false,
                 showSolution = false,
+                revealedWordIds = emptySet(),
                 selectedCell = null,
                 currentWord = null,
                 currentWords = emptyList(),
@@ -388,6 +441,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 currentWordListName = selectedInfo.name,
                 gridRows = rows,
                 gridCols = cols,
+                playMode = playMode,
                 candidateChars = candidates,
                 inputMode = GameInputNormalizer.inputModeFor(candidates)
             )
