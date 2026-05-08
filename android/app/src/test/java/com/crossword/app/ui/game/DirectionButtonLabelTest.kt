@@ -5,8 +5,8 @@ import org.junit.Test
 
 class DirectionButtonLabelTest {
     @Test
-    fun wrapsSelectedDirectionWithBracketsForEInkReadability() {
-        assertEquals("[横]", DirectionButtonLabel.text("横", isSelected = true))
+    fun keepsSelectedDirectionTextStableForEInkRefreshes() {
+        assertEquals("横", DirectionButtonLabel.text("横", isSelected = true))
     }
 
     @Test

@@ -24,6 +24,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -101,6 +102,11 @@ fun GameSetupPanel(
             onPlayModeChange = { onDraftChange(draft.withPlayMode(it)) }
         )
 
+        ClueVisibilityToggle(
+            showClues = draft.showClues,
+            onShowCluesChange = { onDraftChange(draft.withShowClues(it)) }
+        )
+
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val horizontal = maxWidth >= 520.dp
             val contentModifier = Modifier.fillMaxWidth()
@@ -162,6 +168,34 @@ fun GameSetupPanel(
         NamedWordImportDialog(
             onDismiss = { showImportDialog = false },
             onImport = onImportWordList
+        )
+    }
+}
+
+@Composable
+private fun ClueVisibilityToggle(
+    showClues: Boolean,
+    onShowCluesChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "显示线索",
+                style = MaterialTheme.typography.labelLarge
+            )
+            Text(
+                text = "开启后，点击格子会显示当前词的提示。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(
+            checked = showClues,
+            onCheckedChange = onShowCluesChange
         )
     }
 }

@@ -19,6 +19,7 @@ class GameStateTest {
         assertEquals(emptySet<Int>(), state.revealedWordIds)
         assertEquals(InputMode.LETTERS, state.inputMode)
         assertEquals(emptyList<Char>(), state.candidateChars)
+        assertFalse(state.showClues)
         assertFalse(state.showSolvedDialog)
     }
 }

@@ -95,7 +95,8 @@ fun GameScreen(
                 wordListId = draft.wordListId,
                 rows = draft.rows,
                 cols = draft.cols,
-                playMode = draft.playMode
+                playMode = draft.playMode,
+                showClues = draft.showClues
             )
         }
         settingsDraft = null
@@ -387,6 +388,7 @@ private fun GameContent(
             // direction：当前方向
             direction = state.currentDirection,
             playMode = state.playMode,
+            showClues = state.showClues,
             isWordRevealed = isCurrentWordRevealed,
             // showSolution：是否显示答案
             showSolution = state.showSolution,
@@ -452,6 +454,7 @@ private fun HintBar(
     currentWord: com.crossword.app.domain.model.WordPlacement?,
     direction: Direction,                                         // 当前方向
     playMode: GamePlayMode,
+    showClues: Boolean,
     isWordRevealed: Boolean,
     showSolution: Boolean,                                       // 是否显示答案
     onToggleDirection: () -> Unit,                               // 切换方向回调
@@ -460,97 +463,89 @@ private fun HintBar(
     onShowAllSolutions: () -> Unit,                              // 显示全部答案回调
     onHideSolution: () -> Unit                                   // 隐藏答案回调
 ) {
-    // Row：水平布局容器，子组件从左到右排列
-    Row(
-        // fillMaxWidth：宽度填满
+    val controls = HintControlState.from(
+        playMode = playMode,
+        currentWord = currentWord,
+        isWordRevealed = isWordRevealed,
+        showSolution = showSolution
+    )
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            // background：背景色，使用主题的surfaceVariant颜色
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            // padding：内边距，horizontal=左右16dp，vertical=上下8dp
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        // horizontalArrangement：子组件水平排列方式
-        // SpaceBetween：子组件分散排列，第一个在左，最后一个在右
-        horizontalArrangement = Arrangement.SpaceBetween,
-        // verticalAlignment：子组件垂直对齐方式
-        // CenterVertically：垂直居中对齐
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // 左侧：当前线索
-        // Column：垂直布局，占据可用空间（weight(1f)）
-        Column(
-            // weight(1f)：占据左侧所有剩余空间，使右侧按钮被推到边缘
-            modifier = Modifier.weight(1f)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            contentAlignment = Alignment.CenterStart
         ) {
-            // if表达式：检查currentWord是否有值
-            if (currentWord != null) {
-                // 词语编号和方向
-                Text(
-                    // displayLabel：显示标签（数字或字母）
-                    // direction == Direction.HORIZONTAL ? "横" : "竖"：三元表达式
-                    text = "${currentWord.displayLabel}. ${if (direction == Direction.HORIZONTAL) "横" else "竖"}",
-                    // style：使用主题的labelMedium样式
-                    style = MaterialTheme.typography.labelMedium,
-                    // color：主色调
-                    color = MaterialTheme.colorScheme.primary
-                )
+            val selectedClueText = GameClueDisplay.selectedClueText(currentWord, showClues)
 
-                // 线索文本
-                Text(
-                    // clue.ifEmpty { word }：如果clue为空，显示单词本身
-                    text = currentWord.clue.ifEmpty { "暂无提示" },
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            } else {
-                // 没有选中词语时的提示
+            if (currentWord != null && selectedClueText != null) {
+                Column {
+                    Text(
+                        text = "${currentWord.displayLabel}. ${if (direction == Direction.HORIZONTAL) "横" else "竖"}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = selectedClueText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1
+                    )
+                }
+            } else if (currentWord == null) {
                 Text(
                     text = if (playMode == GamePlayMode.REVEAL_WORD) "点击格子查看词语" else "点击格子开始",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
                 )
+            } else {
+                Spacer(modifier = Modifier.fillMaxSize())
             }
         }
 
-        // 中间/右侧：方向切换按钮
         Row(
-            // horizontalArrangement：水平间距
-            // spacedBy(8.dp)：子组件之间8dp间距
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            // verticalAlignment：垂直居中
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // DirectionButton：自定义方向按钮组件
-            // 横按钮
             DirectionButton(
-                text = "横",                                              // 按钮文字
-                isSelected = direction == Direction.HORIZONTAL,          // 是否选中
-                onClick = { onSetDirection(Direction.HORIZONTAL) }       // 点击回调
+                text = "横",
+                isSelected = direction == Direction.HORIZONTAL,
+                onClick = { onSetDirection(Direction.HORIZONTAL) },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp)
             )
-            // 竖按钮
             DirectionButton(
                 text = "竖",
                 isSelected = direction == Direction.VERTICAL,
-                onClick = { onSetDirection(Direction.VERTICAL) }
+                onClick = { onSetDirection(Direction.VERTICAL) },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp)
             )
-        }
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (playMode == GamePlayMode.REVEAL_WORD && currentWord != null && !showSolution && !isWordRevealed) {
-                TextButton(
-                    onClick = onShowSolution
-                ) {
-                    Text("显示本词")
-                }
-            }
-
-            TextButton(
-                onClick = if (showSolution) onHideSolution else onShowAllSolutions
-            ) {
-                Text(if (showSolution) "隐藏全部" else if (playMode == GamePlayMode.REVEAL_WORD) "显示全部" else "显示答案")
-            }
+            HintActionButton(
+                state = controls.wordAnswer,
+                onClick = onShowSolution,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp)
+            )
+            HintActionButton(
+                state = controls.allAnswers,
+                onClick = if (showSolution) onHideSolution else onShowAllSolutions,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp)
+            )
         }
     }
 }
@@ -563,7 +558,8 @@ private fun HintBar(
 private fun DirectionButton(
     text: String,            // 按钮文字
     isSelected: Boolean,      // 是否选中
-    onClick: () -> Unit      // 点击回调
+    onClick: () -> Unit,      // 点击回调
+    modifier: Modifier = Modifier
 ) {
     val displayText = DirectionButtonLabel.text(text, isSelected)
     val borderColor = if (isSelected) Color.Black else Color.Gray
@@ -571,7 +567,7 @@ private fun DirectionButton(
 
     // Surface：表面容器，提供背景和形状
     Surface(
-        modifier = Modifier
+        modifier = modifier
             // border：边框
             // 选中时使用更粗的黑色边框，避免只依赖颜色差异
             // shape：圆角矩形，8dp圆角
@@ -597,6 +593,47 @@ private fun DirectionButton(
             // fontWeight：字体粗细，选中时加粗
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )
+    }
+}
+
+@Composable
+private fun HintActionButton(
+    state: HintActionState,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val borderWidth = if (state.selected) 4.dp else 1.dp
+    val borderColor = if (state.selected) Color.Black else Color.Gray
+    val textColor = if (state.enabled) {
+        MaterialTheme.colorScheme.onSurface
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Surface(
+        modifier = modifier
+            .border(
+                width = borderWidth,
+                color = borderColor,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .clickable(enabled = state.enabled) { onClick() },
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Box(
+            modifier = Modifier.padding(horizontal = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = state.label,
+                color = textColor,
+                fontSize = 16.sp,
+                fontWeight = if (state.selected) FontWeight.Bold else FontWeight.Normal,
+                textAlign = TextAlign.Center,
+                maxLines = 1
+            )
+        }
     }
 }
 

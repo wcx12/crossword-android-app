@@ -37,7 +37,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             wordListId = storage.getCurrentWordListId(),
             rows = gridSize.first,
             cols = gridSize.second,
-            playMode = GamePlayMode.fromStorageValue(storage.getPlayMode())
+            playMode = GamePlayMode.fromStorageValue(storage.getPlayMode()),
+            showClues = storage.getShowClues()
         )
     }
 
@@ -46,7 +47,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             wordListId = _state.value.currentWordListId,
             rows = rows,
             cols = cols,
-            playMode = _state.value.playMode
+            playMode = _state.value.playMode,
+            showClues = _state.value.showClues
         )
     }
 
@@ -55,7 +57,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             wordListId = id,
             rows = _state.value.gridRows,
             cols = _state.value.gridCols,
-            playMode = _state.value.playMode
+            playMode = _state.value.playMode,
+            showClues = _state.value.showClues
         )
     }
 
@@ -64,11 +67,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             wordListId = _state.value.currentWordListId,
             rows = rows,
             cols = cols,
-            playMode = _state.value.playMode
+            playMode = _state.value.playMode,
+            showClues = _state.value.showClues
         )
     }
 
-    fun applySettings(wordListId: String, rows: Int, cols: Int, playMode: GamePlayMode) {
+    fun applySettings(wordListId: String, rows: Int, cols: Int, playMode: GamePlayMode, showClues: Boolean) {
         val safeRows = rows.coerceIn(MIN_GRID_SIZE, MAX_GRID_SIZE)
         val safeCols = cols.coerceIn(MIN_GRID_SIZE, MAX_GRID_SIZE)
         val needsNewGame = wordListId != _state.value.currentWordListId ||
@@ -78,9 +82,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         if (!needsNewGame) {
             storage.setPlayMode(playMode.storageValue)
+            storage.setShowClues(showClues)
             _state.update {
                 it.copy(
                     playMode = playMode,
+                    showClues = showClues,
                     showSolution = false,
                     revealedWordIds = emptySet(),
                     showSolvedDialog = false
@@ -93,7 +99,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             wordListId = wordListId,
             rows = rows,
             cols = cols,
-            playMode = playMode
+            playMode = playMode,
+            showClues = showClues
         )
     }
 
@@ -125,7 +132,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     wordListId = storage.getCurrentWordListId(),
                     rows = _state.value.gridRows,
                     cols = _state.value.gridCols,
-                    playMode = _state.value.playMode
+                    playMode = _state.value.playMode,
+                    showClues = _state.value.showClues
                 )
             } else {
                 refreshWordLists()
@@ -180,6 +188,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 gridRows = rows.coerceIn(MIN_GRID_SIZE, MAX_GRID_SIZE),
                 gridCols = cols.coerceIn(MIN_GRID_SIZE, MAX_GRID_SIZE),
                 playMode = _state.value.playMode,
+                showClues = _state.value.showClues,
                 candidateChars = candidates,
                 inputMode = GameInputNormalizer.inputModeFor(candidates)
             )
@@ -323,7 +332,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         wordListId: String,
         rows: Int,
         cols: Int,
-        playMode: GamePlayMode = _state.value.playMode
+        playMode: GamePlayMode = _state.value.playMode,
+        showClues: Boolean = _state.value.showClues
     ) {
         val requestId = generationRequests.next()
         val safeRows = rows.coerceIn(MIN_GRID_SIZE, MAX_GRID_SIZE)
@@ -339,6 +349,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     gridRows = safeRows,
                     gridCols = safeCols,
                     playMode = playMode,
+                    showClues = showClues,
                     revealedWordIds = emptySet(),
                     showSolvedDialog = false
                 )
@@ -355,6 +366,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     storage.setCurrentWordListId(selectedInfo.id)
                     storage.setGridSize(safeRows, safeCols)
                     storage.setPlayMode(playMode.storageValue)
+                    storage.setShowClues(showClues)
                 }
                 if (!persisted) return@launch
 
@@ -374,6 +386,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                             rows = safeRows,
                             cols = safeCols,
                             playMode = playMode,
+                            showClues = showClues,
                             wordCount = words.size
                         )
                     }
@@ -404,6 +417,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         rows: Int,
         cols: Int,
         playMode: GamePlayMode,
+        showClues: Boolean,
         wordCount: Int
     ) {
         if (crossword == null) {
@@ -416,6 +430,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     gridRows = rows,
                     gridCols = cols,
                     playMode = playMode,
+                    showClues = showClues,
                     revealedWordIds = emptySet(),
                     errorMessage = "无法生成谜题，请尝试更多词条或更大的网格（当前词条: $wordCount）"
                 )
@@ -442,6 +457,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 gridRows = rows,
                 gridCols = cols,
                 playMode = playMode,
+                showClues = showClues,
                 candidateChars = candidates,
                 inputMode = GameInputNormalizer.inputModeFor(candidates)
             )
