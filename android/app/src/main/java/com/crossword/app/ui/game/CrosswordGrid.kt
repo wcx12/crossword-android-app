@@ -4,9 +4,6 @@ package com.crossword.app.ui.game
 // background：设置背景色
 import androidx.compose.foundation.background
 
-// border：设置边框
-import androidx.compose.foundation.border
-
 // clickable：添加点击事件
 import androidx.compose.foundation.clickable
 
@@ -35,6 +32,9 @@ import androidx.compose.runtime.remember
 
 // Alignment对齐方式
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 
 // Modifier修饰符
 import androidx.compose.ui.Modifier
@@ -65,6 +65,9 @@ import com.crossword.app.domain.model.WordPlacement
 
 // 主题颜色
 import com.crossword.app.ui.theme.*
+
+private val GridLineColor = Color.Gray
+private val GridLineWidth = 1.dp
 
 /**
  * CrosswordGrid - 纵横字谜网格组件
@@ -165,6 +168,15 @@ fun CrosswordGrid(
                             val isInCurrentWord = currentWord?.getCells()?.contains(cellPosition) == true
                             val isInRelatedWord = currentWords.any { it.getCells().contains(cellPosition) }
                             val isInRevealedWord = revealedWords.any { it.getCells().contains(cellPosition) }
+                            val gridLines = CellGridLines.forCell(
+                                row = row,
+                                col = col,
+                                rows = crossword.rows,
+                                cols = crossword.cols,
+                                isBlocked = { checkRow, checkCol ->
+                                    crossword.grid[checkRow][checkCol].isBlocked
+                                }
+                            )
 
                             /**
                              * CellView - 单个格子组件
@@ -183,6 +195,7 @@ fun CrosswordGrid(
                                 isInRelatedWord = isInRelatedWord,
                                 showAnswer = showSolution || isInRevealedWord,
                                 showCellInputs = showCellInputs,
+                                gridLines = gridLines,
                                 // cellSize：格子尺寸
                                 cellSize = cellSize,
                                 // onClick：点击回调
@@ -222,6 +235,7 @@ private fun CellView(
     isInRelatedWord: Boolean,      // 是否在当前格子从属的其他词语中
     showAnswer: Boolean,           // 是否显示答案
     showCellInputs: Boolean,       // 是否显示用户输入
+    gridLines: CellGridLines,
     cellSize: Dp,                  // 格子尺寸
     onClick: () -> Unit            // 点击回调
 ) {
@@ -260,13 +274,6 @@ private fun CellView(
         // 默认：主要文字颜色
         else -> TextPrimary
     }
-
-    val borderColor = when {
-        isSelected || isInCurrentWord -> Color.Black
-        isInRelatedWord -> Color.DarkGray
-        else -> Color.Gray
-    }
-    val borderWidth = if (isSelected || isInCurrentWord) 2.dp else 1.dp
 
     /**
      * 查找格子左上角的横排标号
@@ -325,8 +332,37 @@ private fun CellView(
             .size(cellSize)
             // background：背景色
             .background(backgroundColor)
-            // border：边框，1dp灰色
-            .border(borderWidth, borderColor)
+            .drawBehind {
+                val lineWidth = GridLineWidth.toPx()
+                if (gridLines.top) {
+                    drawRect(
+                        color = GridLineColor,
+                        topLeft = Offset.Zero,
+                        size = Size(size.width, lineWidth)
+                    )
+                }
+                if (gridLines.left) {
+                    drawRect(
+                        color = GridLineColor,
+                        topLeft = Offset.Zero,
+                        size = Size(lineWidth, size.height)
+                    )
+                }
+                if (gridLines.right) {
+                    drawRect(
+                        color = GridLineColor,
+                        topLeft = Offset(size.width - lineWidth, 0f),
+                        size = Size(lineWidth, size.height)
+                    )
+                }
+                if (gridLines.bottom) {
+                    drawRect(
+                        color = GridLineColor,
+                        topLeft = Offset(0f, size.height - lineWidth),
+                        size = Size(size.width, lineWidth)
+                    )
+                }
+            }
             // clickable：点击事件
             // enabled：是否启用点击，墙格子禁用
             .clickable(
