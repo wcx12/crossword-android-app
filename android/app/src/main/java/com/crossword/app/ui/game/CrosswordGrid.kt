@@ -98,6 +98,7 @@ fun CrosswordGrid(
     showSolution: Boolean,                   // 是否显示答案
     revealedWords: List<WordPlacement> = emptyList(),
     showCellInputs: Boolean = true,
+    highlightSelectedWord: Boolean = false,
     onCellClick: (Int, Int) -> Unit,        // 点击回调
     modifier: Modifier = Modifier            // 修饰符
 ) {
@@ -198,6 +199,7 @@ fun CrosswordGrid(
                                 showAnswer = showSolution || isInRevealedWord,
                                 showCellInputs = showCellInputs,
                                 gridLines = gridLines,
+                                highlightSelectedWord = highlightSelectedWord,
                                 // cellSize：格子尺寸
                                 cellSize = cellSize,
                                 // onClick：点击回调
@@ -238,6 +240,7 @@ private fun CellView(
     showAnswer: Boolean,           // 是否显示答案
     showCellInputs: Boolean,       // 是否显示用户输入
     gridLines: CellGridLines,
+    highlightSelectedWord: Boolean,
     cellSize: Dp,                  // 格子尺寸
     onClick: () -> Unit            // 点击回调
 ) {
@@ -253,7 +256,8 @@ private fun CellView(
         isBlocked = cell.isBlocked,
         isSelected = isSelected,
         isInCurrentWord = isInCurrentWord,
-        isInRelatedWord = isInRelatedWord
+        isInRelatedWord = isInRelatedWord,
+        highlightSelectedWord = highlightSelectedWord
     )
     val backgroundColor = when (visualStyle.backgroundTone) {
         CellBackgroundTone.Blocked -> CellBlocked

@@ -107,6 +107,11 @@ fun GameSetupPanel(
             onShowCluesChange = { onDraftChange(draft.withShowClues(it)) }
         )
 
+        SelectedWordHighlightToggle(
+            highlightSelectedWord = draft.highlightSelectedWord,
+            onHighlightSelectedWordChange = { onDraftChange(draft.withHighlightSelectedWord(it)) }
+        )
+
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val horizontal = maxWidth >= 520.dp
             val contentModifier = Modifier.fillMaxWidth()
@@ -196,6 +201,34 @@ private fun ClueVisibilityToggle(
         Switch(
             checked = showClues,
             onCheckedChange = onShowCluesChange
+        )
+    }
+}
+
+@Composable
+private fun SelectedWordHighlightToggle(
+    highlightSelectedWord: Boolean,
+    onHighlightSelectedWordChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "显示选词阴影",
+                style = MaterialTheme.typography.labelLarge
+            )
+            Text(
+                text = "开启后，点击格子会同时给所属单词加浅底色；关闭时只强调当前格子。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(
+            checked = highlightSelectedWord,
+            onCheckedChange = onHighlightSelectedWordChange
         )
     }
 }

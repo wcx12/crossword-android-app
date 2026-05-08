@@ -96,7 +96,8 @@ fun GameScreen(
                 rows = draft.rows,
                 cols = draft.cols,
                 playMode = draft.playMode,
-                showClues = draft.showClues
+                showClues = draft.showClues,
+                highlightSelectedWord = draft.highlightSelectedWord
             )
         }
         settingsDraft = null
@@ -417,6 +418,7 @@ private fun GameContent(
             showSolution = state.showSolution,
             revealedWords = revealedWords,
             showCellInputs = state.playMode == GamePlayMode.FILL_WORD,
+            highlightSelectedWord = state.highlightSelectedWord,
             // onCellClick：格子点击回调
             onCellClick = onCellClick,
             // modifier：配置weight使网格占据剩余空间

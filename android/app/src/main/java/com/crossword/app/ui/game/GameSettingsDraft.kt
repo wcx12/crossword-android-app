@@ -5,7 +5,8 @@ data class GameSettingsDraft(
     val rows: Int,
     val cols: Int,
     val playMode: GamePlayMode,
-    val showClues: Boolean
+    val showClues: Boolean,
+    val highlightSelectedWord: Boolean
 ) {
     fun withWordList(id: String): GameSettingsDraft {
         return copy(wordListId = id)
@@ -23,12 +24,17 @@ data class GameSettingsDraft(
         return copy(showClues = showClues)
     }
 
+    fun withHighlightSelectedWord(highlightSelectedWord: Boolean): GameSettingsDraft {
+        return copy(highlightSelectedWord = highlightSelectedWord)
+    }
+
     fun isDifferentFrom(state: GameState): Boolean {
         return wordListId != state.currentWordListId ||
             rows != state.gridRows ||
             cols != state.gridCols ||
             playMode != state.playMode ||
-            showClues != state.showClues
+            showClues != state.showClues ||
+            highlightSelectedWord != state.highlightSelectedWord
     }
 
     companion object {
@@ -38,7 +44,8 @@ data class GameSettingsDraft(
                 rows = state.gridRows,
                 cols = state.gridCols,
                 playMode = state.playMode,
-                showClues = state.showClues
+                showClues = state.showClues,
+                highlightSelectedWord = state.highlightSelectedWord
             )
         }
     }

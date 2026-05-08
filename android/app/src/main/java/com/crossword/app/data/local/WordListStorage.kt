@@ -58,6 +58,16 @@ class WordListStorage(private val context: Context) {
             .commitOrThrow("show clues")
     }
 
+    fun getHighlightSelectedWord(): Boolean {
+        return prefs.getBoolean(KEY_HIGHLIGHT_SELECTED_WORD, DEFAULT_HIGHLIGHT_SELECTED_WORD)
+    }
+
+    fun setHighlightSelectedWord(highlightSelectedWord: Boolean) {
+        prefs.edit()
+            .putBoolean(KEY_HIGHLIGHT_SELECTED_WORD, highlightSelectedWord)
+            .commitOrThrow("highlight selected word")
+    }
+
     fun loadWords(info: WordListInfo): List<WordEntry> {
         return if (info.isSystem) {
             DefaultWordLoader.load(context, info.assetPath!!)
@@ -153,10 +163,12 @@ class WordListStorage(private val context: Context) {
         const val KEY_GRID_COLS = "grid_cols"
         const val KEY_PLAY_MODE = "play_mode"
         const val KEY_SHOW_CLUES = "show_clues"
+        const val KEY_HIGHLIGHT_SELECTED_WORD = "highlight_selected_word"
         const val CUSTOM_DIR = "custom_wordlists"
 
         private const val DEFAULT_GRID_SIZE = 13
         private const val DEFAULT_PLAY_MODE = "reveal_word"
         private const val DEFAULT_SHOW_CLUES = false
+        private const val DEFAULT_HIGHLIGHT_SELECTED_WORD = false
     }
 }

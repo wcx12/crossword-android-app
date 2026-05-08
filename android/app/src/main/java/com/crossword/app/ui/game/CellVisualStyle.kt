@@ -17,12 +17,14 @@ data class CellVisualStyle(
             isBlocked: Boolean,
             isSelected: Boolean,
             isInCurrentWord: Boolean,
-            isInRelatedWord: Boolean
+            isInRelatedWord: Boolean,
+            highlightSelectedWord: Boolean
         ): CellVisualStyle {
             val backgroundTone = when {
                 isBlocked -> CellBackgroundTone.Blocked
-                isInCurrentWord -> CellBackgroundTone.Highlight
-                isInRelatedWord -> CellBackgroundTone.RelatedHighlight
+                isSelected -> CellBackgroundTone.Highlight
+                highlightSelectedWord && isInCurrentWord -> CellBackgroundTone.Highlight
+                highlightSelectedWord && isInRelatedWord -> CellBackgroundTone.RelatedHighlight
                 else -> CellBackgroundTone.Empty
             }
             return CellVisualStyle(

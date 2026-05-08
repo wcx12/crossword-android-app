@@ -40,6 +40,7 @@ data class GameState(
     val gridCols: Int = 13,
     val playMode: GamePlayMode = GamePlayMode.REVEAL_WORD,
     val showClues: Boolean = false,
+    val highlightSelectedWord: Boolean = false,
     val revealedWordIds: Set<Int> = emptySet(),
     val inputMode: InputMode = InputMode.LETTERS,
     val candidateChars: List<Char> = emptyList()

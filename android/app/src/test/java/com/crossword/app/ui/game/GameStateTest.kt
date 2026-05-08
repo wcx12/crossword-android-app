@@ -20,6 +20,7 @@ class GameStateTest {
         assertEquals(InputMode.LETTERS, state.inputMode)
         assertEquals(emptyList<Char>(), state.candidateChars)
         assertFalse(state.showClues)
+        assertFalse(state.highlightSelectedWord)
         assertFalse(state.showSolvedDialog)
     }
 }
