@@ -48,6 +48,17 @@ class WordListStorage(private val context: Context) {
             .commitOrThrow("play mode")
     }
 
+    fun getWordSelectionMode(): String {
+        return prefs.getString(KEY_WORD_SELECTION_MODE, DEFAULT_WORD_SELECTION_MODE)
+            ?: DEFAULT_WORD_SELECTION_MODE
+    }
+
+    fun setWordSelectionMode(wordSelectionMode: String) {
+        prefs.edit()
+            .putString(KEY_WORD_SELECTION_MODE, wordSelectionMode)
+            .commitOrThrow("word selection mode")
+    }
+
     fun getShowClues(): Boolean {
         return prefs.getBoolean(KEY_SHOW_CLUES, DEFAULT_SHOW_CLUES)
     }
@@ -162,12 +173,14 @@ class WordListStorage(private val context: Context) {
         const val KEY_GRID_ROWS = "grid_rows"
         const val KEY_GRID_COLS = "grid_cols"
         const val KEY_PLAY_MODE = "play_mode"
+        const val KEY_WORD_SELECTION_MODE = "word_selection_mode"
         const val KEY_SHOW_CLUES = "show_clues"
         const val KEY_HIGHLIGHT_SELECTED_WORD = "highlight_selected_word"
         const val CUSTOM_DIR = "custom_wordlists"
 
         private const val DEFAULT_GRID_SIZE = 13
         private const val DEFAULT_PLAY_MODE = "reveal_word"
+        private const val DEFAULT_WORD_SELECTION_MODE = "direction_first"
         private const val DEFAULT_SHOW_CLUES = false
         private const val DEFAULT_HIGHLIGHT_SELECTED_WORD = false
     }

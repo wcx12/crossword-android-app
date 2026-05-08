@@ -9,10 +9,14 @@ object GameWordSelector {
         crossword: Crossword,
         row: Int,
         col: Int,
-        preferredDirection: Direction
+        preferredDirection: Direction,
+        selectionMode: WordSelectionMode
     ): WordPlacement? {
         val wordsAtCell = crossword.getWordsAt(row, col)
-        return wordsAtCell.firstOrNull { it.direction == preferredDirection }
-            ?: wordsAtCell.firstOrNull()
+        val preferredWord = wordsAtCell.firstOrNull { it.direction == preferredDirection }
+        return when (selectionMode) {
+            WordSelectionMode.DIRECTION_FIRST -> preferredWord
+            WordSelectionMode.AUTO_MATCH -> preferredWord ?: wordsAtCell.firstOrNull()
+        }
     }
 }

@@ -102,6 +102,11 @@ fun GameSetupPanel(
             onPlayModeChange = { onDraftChange(draft.withPlayMode(it)) }
         )
 
+        WordSelectionModeSelector(
+            wordSelectionMode = draft.wordSelectionMode,
+            onWordSelectionModeChange = { onDraftChange(draft.withWordSelectionMode(it)) }
+        )
+
         ClueVisibilityToggle(
             showClues = draft.showClues,
             onShowCluesChange = { onDraftChange(draft.withShowClues(it)) }
@@ -258,6 +263,36 @@ private fun PlayModeSelector(
             text = "填字输入",
             selected = playMode == GamePlayMode.FILL_WORD,
             onClick = { onPlayModeChange(GamePlayMode.FILL_WORD) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun WordSelectionModeSelector(
+    wordSelectionMode: WordSelectionMode,
+    onWordSelectionModeChange: (WordSelectionMode) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "选词",
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1
+        )
+        PlayModeButton(
+            text = "先选方向",
+            selected = wordSelectionMode == WordSelectionMode.DIRECTION_FIRST,
+            onClick = { onWordSelectionModeChange(WordSelectionMode.DIRECTION_FIRST) },
+            modifier = Modifier.weight(1f)
+        )
+        PlayModeButton(
+            text = "自动匹配",
+            selected = wordSelectionMode == WordSelectionMode.AUTO_MATCH,
+            onClick = { onWordSelectionModeChange(WordSelectionMode.AUTO_MATCH) },
             modifier = Modifier.weight(1f)
         )
     }

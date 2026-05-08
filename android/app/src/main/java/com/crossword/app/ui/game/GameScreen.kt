@@ -97,7 +97,8 @@ fun GameScreen(
                 cols = draft.cols,
                 playMode = draft.playMode,
                 showClues = draft.showClues,
-                highlightSelectedWord = draft.highlightSelectedWord
+                highlightSelectedWord = draft.highlightSelectedWord,
+                wordSelectionMode = draft.wordSelectionMode
             )
         }
         settingsDraft = null

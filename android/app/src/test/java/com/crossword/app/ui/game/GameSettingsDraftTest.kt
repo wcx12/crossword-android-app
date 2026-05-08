@@ -13,6 +13,7 @@ class GameSettingsDraftTest {
             currentWordListId = WordListCatalog.DEFAULT_WORD_LIST_ID,
             gridRows = 12,
             gridCols = 14,
+            wordSelectionMode = WordSelectionMode.AUTO_MATCH,
             showClues = true,
             highlightSelectedWord = true
         )
@@ -23,6 +24,7 @@ class GameSettingsDraftTest {
         assertEquals(12, draft.rows)
         assertEquals(14, draft.cols)
         assertEquals(GamePlayMode.REVEAL_WORD, draft.playMode)
+        assertEquals(WordSelectionMode.AUTO_MATCH, draft.wordSelectionMode)
         assertTrue(draft.showClues)
         assertTrue(draft.highlightSelectedWord)
         assertFalse(draft.isDifferentFrom(state))
@@ -46,6 +48,15 @@ class GameSettingsDraftTest {
         val draft = GameSettingsDraft.from(state).withPlayMode(GamePlayMode.FILL_WORD)
 
         assertEquals(GamePlayMode.FILL_WORD, draft.playMode)
+        assertTrue(draft.isDifferentFrom(state))
+    }
+
+    @Test
+    fun changingWordSelectionModeMakesDraftDifferentFromAppliedState() {
+        val state = GameState(wordSelectionMode = WordSelectionMode.DIRECTION_FIRST)
+        val draft = GameSettingsDraft.from(state).withWordSelectionMode(WordSelectionMode.AUTO_MATCH)
+
+        assertEquals(WordSelectionMode.AUTO_MATCH, draft.wordSelectionMode)
         assertTrue(draft.isDifferentFrom(state))
     }
 

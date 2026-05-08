@@ -5,6 +5,7 @@ data class GameSettingsDraft(
     val rows: Int,
     val cols: Int,
     val playMode: GamePlayMode,
+    val wordSelectionMode: WordSelectionMode,
     val showClues: Boolean,
     val highlightSelectedWord: Boolean
 ) {
@@ -20,6 +21,10 @@ data class GameSettingsDraft(
         return copy(playMode = playMode)
     }
 
+    fun withWordSelectionMode(wordSelectionMode: WordSelectionMode): GameSettingsDraft {
+        return copy(wordSelectionMode = wordSelectionMode)
+    }
+
     fun withShowClues(showClues: Boolean): GameSettingsDraft {
         return copy(showClues = showClues)
     }
@@ -33,6 +38,7 @@ data class GameSettingsDraft(
             rows != state.gridRows ||
             cols != state.gridCols ||
             playMode != state.playMode ||
+            wordSelectionMode != state.wordSelectionMode ||
             showClues != state.showClues ||
             highlightSelectedWord != state.highlightSelectedWord
     }
@@ -44,6 +50,7 @@ data class GameSettingsDraft(
                 rows = state.gridRows,
                 cols = state.gridCols,
                 playMode = state.playMode,
+                wordSelectionMode = state.wordSelectionMode,
                 showClues = state.showClues,
                 highlightSelectedWord = state.highlightSelectedWord
             )

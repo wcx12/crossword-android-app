@@ -22,6 +22,17 @@ enum class GamePlayMode(val storageValue: String) {
     }
 }
 
+enum class WordSelectionMode(val storageValue: String) {
+    DIRECTION_FIRST("direction_first"),
+    AUTO_MATCH("auto_match");
+
+    companion object {
+        fun fromStorageValue(value: String?): WordSelectionMode {
+            return entries.firstOrNull { it.storageValue == value } ?: DIRECTION_FIRST
+        }
+    }
+}
+
 data class GameState(
     val crossword: Crossword? = null,
     val isLoading: Boolean = false,
@@ -39,6 +50,7 @@ data class GameState(
     val gridRows: Int = 13,
     val gridCols: Int = 13,
     val playMode: GamePlayMode = GamePlayMode.REVEAL_WORD,
+    val wordSelectionMode: WordSelectionMode = WordSelectionMode.DIRECTION_FIRST,
     val showClues: Boolean = false,
     val highlightSelectedWord: Boolean = false,
     val revealedWordIds: Set<Int> = emptySet(),

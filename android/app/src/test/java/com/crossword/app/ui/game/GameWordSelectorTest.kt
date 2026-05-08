@@ -6,6 +6,7 @@ import com.crossword.app.domain.model.Crossword
 import com.crossword.app.domain.model.Direction
 import com.crossword.app.domain.model.WordPlacement
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class GameWordSelectorTest {
@@ -17,7 +18,8 @@ class GameWordSelectorTest {
             crossword = crossword,
             row = 0,
             col = 0,
-            preferredDirection = Direction.HORIZONTAL
+            preferredDirection = Direction.HORIZONTAL,
+            selectionMode = WordSelectionMode.DIRECTION_FIRST
         )
 
         assertEquals("横词", selected?.word)
@@ -31,21 +33,38 @@ class GameWordSelectorTest {
             crossword = crossword,
             row = 0,
             col = 0,
-            preferredDirection = Direction.VERTICAL
+            preferredDirection = Direction.VERTICAL,
+            selectionMode = WordSelectionMode.DIRECTION_FIRST
         )
 
         assertEquals("竖词", selected?.word)
     }
 
     @Test
-    fun fallsBackToTheOnlyWordAtCellWhenPreferredDirectionIsUnavailable() {
+    fun returnsNullWhenDirectionFirstModeDoesNotMatchAWordAtCell() {
         val crossword = crossingCrossword()
 
         val selected = GameWordSelector.selectWord(
             crossword = crossword,
             row = 1,
             col = 0,
-            preferredDirection = Direction.HORIZONTAL
+            preferredDirection = Direction.HORIZONTAL,
+            selectionMode = WordSelectionMode.DIRECTION_FIRST
+        )
+
+        assertNull(selected)
+    }
+
+    @Test
+    fun autoModeFallsBackToTheOnlyWordAtCellWhenPreferredDirectionIsUnavailable() {
+        val crossword = crossingCrossword()
+
+        val selected = GameWordSelector.selectWord(
+            crossword = crossword,
+            row = 1,
+            col = 0,
+            preferredDirection = Direction.HORIZONTAL,
+            selectionMode = WordSelectionMode.AUTO_MATCH
         )
 
         assertEquals(Direction.VERTICAL, selected?.direction)

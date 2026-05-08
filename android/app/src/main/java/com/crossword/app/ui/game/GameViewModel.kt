@@ -39,7 +39,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             cols = gridSize.second,
             playMode = GamePlayMode.fromStorageValue(storage.getPlayMode()),
             showClues = storage.getShowClues(),
-            highlightSelectedWord = storage.getHighlightSelectedWord()
+            highlightSelectedWord = storage.getHighlightSelectedWord(),
+            wordSelectionMode = WordSelectionMode.fromStorageValue(storage.getWordSelectionMode())
         )
     }
 
@@ -50,7 +51,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             cols = cols,
             playMode = _state.value.playMode,
             showClues = _state.value.showClues,
-            highlightSelectedWord = _state.value.highlightSelectedWord
+            highlightSelectedWord = _state.value.highlightSelectedWord,
+            wordSelectionMode = _state.value.wordSelectionMode
         )
     }
 
@@ -61,7 +63,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             cols = _state.value.gridCols,
             playMode = _state.value.playMode,
             showClues = _state.value.showClues,
-            highlightSelectedWord = _state.value.highlightSelectedWord
+            highlightSelectedWord = _state.value.highlightSelectedWord,
+            wordSelectionMode = _state.value.wordSelectionMode
         )
     }
 
@@ -72,7 +75,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             cols = cols,
             playMode = _state.value.playMode,
             showClues = _state.value.showClues,
-            highlightSelectedWord = _state.value.highlightSelectedWord
+            highlightSelectedWord = _state.value.highlightSelectedWord,
+            wordSelectionMode = _state.value.wordSelectionMode
         )
     }
 
@@ -82,7 +86,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         cols: Int,
         playMode: GamePlayMode,
         showClues: Boolean,
-        highlightSelectedWord: Boolean
+        highlightSelectedWord: Boolean,
+        wordSelectionMode: WordSelectionMode
     ) {
         val safeRows = rows.coerceIn(MIN_GRID_SIZE, MAX_GRID_SIZE)
         val safeCols = cols.coerceIn(MIN_GRID_SIZE, MAX_GRID_SIZE)
@@ -95,11 +100,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             storage.setPlayMode(playMode.storageValue)
             storage.setShowClues(showClues)
             storage.setHighlightSelectedWord(highlightSelectedWord)
+            storage.setWordSelectionMode(wordSelectionMode.storageValue)
             _state.update {
                 it.copy(
                     playMode = playMode,
                     showClues = showClues,
                     highlightSelectedWord = highlightSelectedWord,
+                    wordSelectionMode = wordSelectionMode,
                     showSolution = false,
                     revealedWordIds = emptySet(),
                     showSolvedDialog = false
@@ -114,7 +121,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             cols = cols,
             playMode = playMode,
             showClues = showClues,
-            highlightSelectedWord = highlightSelectedWord
+            highlightSelectedWord = highlightSelectedWord,
+            wordSelectionMode = wordSelectionMode
         )
     }
 
@@ -148,7 +156,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     cols = _state.value.gridCols,
                     playMode = _state.value.playMode,
                     showClues = _state.value.showClues,
-                    highlightSelectedWord = _state.value.highlightSelectedWord
+                    highlightSelectedWord = _state.value.highlightSelectedWord,
+                    wordSelectionMode = _state.value.wordSelectionMode
                 )
             } else {
                 refreshWordLists()
@@ -205,6 +214,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 playMode = _state.value.playMode,
                 showClues = _state.value.showClues,
                 highlightSelectedWord = _state.value.highlightSelectedWord,
+                wordSelectionMode = _state.value.wordSelectionMode,
                 candidateChars = candidates,
                 inputMode = GameInputNormalizer.inputModeFor(candidates)
             )
@@ -218,14 +228,20 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         if (cell.isBlocked) return
 
         val currentDir = _state.value.currentDirection
+        val selectionMode = _state.value.wordSelectionMode
         val wordsAtCell = crossword.getWordsAt(row, col)
-        val newWord = GameWordSelector.selectWord(crossword, row, col, currentDir)
-        val newDirection = newWord?.direction ?: currentDir
+        val newWord = GameWordSelector.selectWord(
+            crossword = crossword,
+            row = row,
+            col = col,
+            preferredDirection = currentDir,
+            selectionMode = selectionMode
+        ) ?: return
 
         _state.update {
             it.copy(
                 selectedCell = Pair(row, col),
-                currentDirection = newDirection,
+                currentDirection = newWord.direction,
                 currentWord = newWord,
                 currentWords = wordsAtCell
             )
@@ -246,13 +262,18 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         if (selected != null && crossword != null) {
             val wordsAtCell = crossword.getWordsAt(selected.first, selected.second)
-            val word = GameWordSelector.selectWord(crossword, selected.first, selected.second, direction)
-            val newDirection = word?.direction ?: direction
+            val word = GameWordSelector.selectWord(
+                crossword = crossword,
+                row = selected.first,
+                col = selected.second,
+                preferredDirection = direction,
+                selectionMode = _state.value.wordSelectionMode
+            )
             _state.update {
                 it.copy(
-                    currentDirection = newDirection,
-                    currentWord = word ?: it.currentWord,
-                    currentWords = wordsAtCell
+                    currentDirection = word?.direction ?: direction,
+                    currentWord = word,
+                    currentWords = if (word == null) emptyList() else wordsAtCell
                 )
             }
         } else {
@@ -350,7 +371,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         cols: Int,
         playMode: GamePlayMode = _state.value.playMode,
         showClues: Boolean = _state.value.showClues,
-        highlightSelectedWord: Boolean = _state.value.highlightSelectedWord
+        highlightSelectedWord: Boolean = _state.value.highlightSelectedWord,
+        wordSelectionMode: WordSelectionMode = _state.value.wordSelectionMode
     ) {
         val requestId = generationRequests.next()
         val safeRows = rows.coerceIn(MIN_GRID_SIZE, MAX_GRID_SIZE)
@@ -368,6 +390,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     playMode = playMode,
                     showClues = showClues,
                     highlightSelectedWord = highlightSelectedWord,
+                    wordSelectionMode = wordSelectionMode,
                     revealedWordIds = emptySet(),
                     showSolvedDialog = false
                 )
@@ -386,6 +409,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     storage.setPlayMode(playMode.storageValue)
                     storage.setShowClues(showClues)
                     storage.setHighlightSelectedWord(highlightSelectedWord)
+                    storage.setWordSelectionMode(wordSelectionMode.storageValue)
                 }
                 if (!persisted) return@launch
 
@@ -407,6 +431,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                             playMode = playMode,
                             showClues = showClues,
                             highlightSelectedWord = highlightSelectedWord,
+                            wordSelectionMode = wordSelectionMode,
                             wordCount = words.size
                         )
                     }
@@ -439,6 +464,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         playMode: GamePlayMode,
         showClues: Boolean,
         highlightSelectedWord: Boolean,
+        wordSelectionMode: WordSelectionMode,
         wordCount: Int
     ) {
         if (crossword == null) {
@@ -453,6 +479,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     playMode = playMode,
                     showClues = showClues,
                     highlightSelectedWord = highlightSelectedWord,
+                    wordSelectionMode = wordSelectionMode,
                     revealedWordIds = emptySet(),
                     errorMessage = "无法生成谜题，请尝试更多词条或更大的网格（当前词条: $wordCount）"
                 )
@@ -481,6 +508,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 playMode = playMode,
                 showClues = showClues,
                 highlightSelectedWord = highlightSelectedWord,
+                wordSelectionMode = wordSelectionMode,
                 candidateChars = candidates,
                 inputMode = GameInputNormalizer.inputModeFor(candidates)
             )
