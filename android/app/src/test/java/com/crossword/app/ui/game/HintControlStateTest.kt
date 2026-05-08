@@ -82,6 +82,19 @@ class HintControlStateTest {
         assertTrue(controls.allAnswers.selected)
     }
 
+    @Test
+    fun keepsWordAnswerTextUndimmedAfterCurrentWordIsRevealed() {
+        val controls = HintControlState.from(
+            playMode = GamePlayMode.REVEAL_WORD,
+            currentWord = placement(),
+            isWordRevealed = true,
+            showSolution = false
+        )
+
+        assertFalse(controls.wordAnswer.enabled)
+        assertFalse(controls.wordAnswer.dimWhenDisabled)
+    }
+
     private fun placement(): WordPlacement {
         return WordPlacement(
             id = 1,

@@ -22,7 +22,7 @@ data class CellVisualStyle(
         ): CellVisualStyle {
             val backgroundTone = when {
                 isBlocked -> CellBackgroundTone.Blocked
-                isSelected -> CellBackgroundTone.Highlight
+                isSelected -> CellBackgroundTone.Empty
                 highlightSelectedWord && isInCurrentWord -> CellBackgroundTone.Highlight
                 highlightSelectedWord && isInRelatedWord -> CellBackgroundTone.RelatedHighlight
                 else -> CellBackgroundTone.Empty

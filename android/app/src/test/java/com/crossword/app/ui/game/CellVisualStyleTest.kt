@@ -16,7 +16,7 @@ class CellVisualStyleTest {
             highlightSelectedWord = false
         )
 
-        assertEquals(CellBackgroundTone.Highlight, style.backgroundTone)
+        assertEquals(CellBackgroundTone.Empty, style.backgroundTone)
         assertFalse(style.usesDarkFill)
         assertTrue(style.hasSelectionBorder)
     }
@@ -31,7 +31,22 @@ class CellVisualStyleTest {
             highlightSelectedWord = false
         )
 
-        assertEquals(CellBackgroundTone.Highlight, style.backgroundTone)
+        assertEquals(CellBackgroundTone.Empty, style.backgroundTone)
+        assertFalse(style.usesDarkFill)
+        assertTrue(style.hasSelectionBorder)
+    }
+
+    @Test
+    fun selectedCellKeepsEmptyBackgroundWhenWordHighlightIsEnabled() {
+        val style = CellVisualStyle.forCell(
+            isBlocked = false,
+            isSelected = true,
+            isInCurrentWord = true,
+            isInRelatedWord = false,
+            highlightSelectedWord = true
+        )
+
+        assertEquals(CellBackgroundTone.Empty, style.backgroundTone)
         assertFalse(style.usesDarkFill)
         assertTrue(style.hasSelectionBorder)
     }

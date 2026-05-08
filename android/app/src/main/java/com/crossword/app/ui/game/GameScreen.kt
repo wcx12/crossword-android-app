@@ -607,7 +607,7 @@ private fun HintActionButton(
 ) {
     val borderWidth = if (state.selected) 4.dp else 1.dp
     val borderColor = if (state.selected) Color.Black else Color.Gray
-    val textColor = if (state.enabled) {
+    val textColor = if (state.enabled || !state.dimWhenDisabled) {
         MaterialTheme.colorScheme.onSurface
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant

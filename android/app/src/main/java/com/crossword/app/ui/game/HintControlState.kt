@@ -5,7 +5,8 @@ import com.crossword.app.domain.model.WordPlacement
 data class HintActionState(
     val label: String,
     val enabled: Boolean,
-    val selected: Boolean = false
+    val selected: Boolean = false,
+    val dimWhenDisabled: Boolean = true
 )
 
 data class HintControlState(
@@ -25,7 +26,8 @@ data class HintControlState(
                     enabled = playMode == GamePlayMode.REVEAL_WORD &&
                         currentWord != null &&
                         !showSolution &&
-                        !isWordRevealed
+                        !isWordRevealed,
+                    dimWhenDisabled = false
                 ),
                 allAnswers = HintActionState(
                     label = "全部答案",
