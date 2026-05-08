@@ -68,6 +68,8 @@ import com.crossword.app.ui.theme.*
 
 private val GridLineColor = Color.Gray
 private val GridLineWidth = 1.dp
+private val SelectedGridLineColor = Color.Black
+private val SelectedGridLineWidth = 3.dp
 
 /**
  * CrosswordGrid - 纵横字谜网格组件
@@ -247,16 +249,17 @@ private fun CellView(
      * - 支持范围匹配
      * - 支持条件表达式
      */
-    val backgroundColor = when {
-        // 条件1：是墙格子 → 使用墙颜色
-        cell.isBlocked -> CellBlocked
-        // 条件2：当前选中 → 使用选中颜色
-        isSelected -> CellSelected
-        // 条件3：在当前词语中 → 使用高亮颜色
-        isInCurrentWord -> CellHighlight
-        isInRelatedWord -> CellHighlight.copy(alpha = 0.55f)
-        // 默认：空格子颜色
-        else -> CellEmpty
+    val visualStyle = CellVisualStyle.forCell(
+        isBlocked = cell.isBlocked,
+        isSelected = isSelected,
+        isInCurrentWord = isInCurrentWord,
+        isInRelatedWord = isInRelatedWord
+    )
+    val backgroundColor = when (visualStyle.backgroundTone) {
+        CellBackgroundTone.Blocked -> CellBlocked
+        CellBackgroundTone.Highlight -> CellHighlight
+        CellBackgroundTone.RelatedHighlight -> CellHighlight.copy(alpha = 0.55f)
+        CellBackgroundTone.Empty -> CellEmpty
     }
 
     /**
@@ -265,7 +268,6 @@ private fun CellView(
     val textColor = when {
         // 是墙格子 → 透明色（不显示文字）
         cell.isBlocked -> Color.Transparent
-        isSelected -> TextOnDark
         // 有输入字母且显示答案模式
         cell.char != null && showAnswer && showCellInputs -> {
             // isCorrect：比较用户输入和正确答案
@@ -360,6 +362,29 @@ private fun CellView(
                         color = GridLineColor,
                         topLeft = Offset(0f, size.height - lineWidth),
                         size = Size(size.width, lineWidth)
+                    )
+                }
+                if (visualStyle.hasSelectionBorder) {
+                    val selectedLineWidth = SelectedGridLineWidth.toPx()
+                    drawRect(
+                        color = SelectedGridLineColor,
+                        topLeft = Offset.Zero,
+                        size = Size(size.width, selectedLineWidth)
+                    )
+                    drawRect(
+                        color = SelectedGridLineColor,
+                        topLeft = Offset.Zero,
+                        size = Size(selectedLineWidth, size.height)
+                    )
+                    drawRect(
+                        color = SelectedGridLineColor,
+                        topLeft = Offset(size.width - selectedLineWidth, 0f),
+                        size = Size(selectedLineWidth, size.height)
+                    )
+                    drawRect(
+                        color = SelectedGridLineColor,
+                        topLeft = Offset(0f, size.height - selectedLineWidth),
+                        size = Size(size.width, selectedLineWidth)
                     )
                 }
             }
