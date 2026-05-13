@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
 import { colors } from '../theme/theme';
+import {
+  inputStyle,
+  navButtonStyle,
+  pageHeaderLeftStyle,
+  pageHeaderStyle,
+  pageShellStyle,
+  pageTitleStyle,
+  primaryButtonStyle,
+} from '../theme/pageStyles';
 
 interface AddWordListProps {
   onConfirm: (entries: { word: string; clue: string }[]) => void;
@@ -50,39 +59,25 @@ export const AddWordList: React.FC<AddWordListProps> = ({ onConfirm, onBack }) =
   const validCount = previewEntries.length;
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100vh',
-    }}>
+    <div style={{ ...pageShellStyle, height: '100vh' }}>
       {/* 顶部栏 */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        padding: '12px 16px',
-        backgroundColor: colors.primary,
-        color: colors.onPrimary,
-      }}>
-        <button
-          onClick={onBack}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: colors.onPrimary,
-            cursor: 'pointer',
-            fontSize: 14,
-            marginRight: 16,
-          }}
-        >
-          ← 返回
-        </button>
-        <span style={{ fontSize: 18, fontWeight: 'bold' }}>添加自定义词表</span>
+      <div style={pageHeaderStyle}>
+        <div style={pageHeaderLeftStyle}>
+          <button
+            onClick={onBack}
+            style={navButtonStyle}
+          >
+            返回词表
+          </button>
+          <span style={pageTitleStyle}>添加自定义词表</span>
+        </div>
       </div>
 
       {/* 说明 */}
       <div style={{
         padding: '12px 16px',
-        backgroundColor: colors.surfaceVariant,
+        backgroundColor: colors.surface,
+        borderBottom: `1px solid ${colors.outline}`,
         fontSize: 12,
         color: colors.onSurfaceVariant,
         lineHeight: 1.5,
@@ -110,12 +105,10 @@ export const AddWordList: React.FC<AddWordListProps> = ({ onConfirm, onBack }) =
           }}
           placeholder="输入词表，每行一个&#10;&#10;例如：&#10;PYTHON 一种编程语言&#10;FUNCTION 函数&#10;LOOP 循环"
           style={{
+            ...inputStyle(Boolean(error)),
             flex: 1,
-            padding: 12,
             fontSize: 14,
             fontFamily: 'monospace',
-            border: `1px solid ${error ? colors.error : colors.outline}`,
-            borderRadius: 8,
             resize: 'none',
             lineHeight: 1.6,
           }}
@@ -151,14 +144,8 @@ export const AddWordList: React.FC<AddWordListProps> = ({ onConfirm, onBack }) =
           disabled={validCount < 2}
           style={{
             width: '100%',
-            padding: '12px 16px',
-            backgroundColor: validCount >= 2 ? colors.primary : colors.outline,
-            color: colors.onPrimary,
-            border: 'none',
-            borderRadius: 8,
+            ...primaryButtonStyle(validCount < 2),
             fontSize: 16,
-            fontWeight: 'bold',
-            cursor: validCount >= 2 ? 'pointer' : 'not-allowed',
           }}
         >
           开始游戏

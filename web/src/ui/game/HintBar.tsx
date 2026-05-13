@@ -20,12 +20,13 @@ export const HintBar: React.FC<HintBarProps> = ({
   onShowSolution,
 }) => {
   const buttonStyle = (isSelected: boolean): React.CSSProperties => ({
-    padding: '4px 12px',
-    border: `2px solid ${isSelected ? colors.primary : colors.outline}`,
-    borderRadius: 8,
+    minHeight: 44,
+    padding: '0 14px',
+    border: `1px solid ${isSelected ? colors.primary : colors.outline}`,
+    borderRadius: 999,
     backgroundColor: isSelected ? colors.primaryContainer : colors.surface,
     color: isSelected ? colors.onPrimaryContainer : colors.onSurface,
-    fontWeight: isSelected ? 'bold' : 'normal',
+    fontWeight: 800,
     cursor: 'pointer',
   });
 
@@ -36,8 +37,11 @@ export const HintBar: React.FC<HintBarProps> = ({
       justifyContent: 'space-between',
       padding: '8px 16px',
       backgroundColor: colors.surfaceVariant,
+      borderBottom: `1px solid ${colors.outline}`,
       width: '100%',
       boxSizing: 'border-box',
+      gap: 12,
+      flexWrap: 'wrap',
     }}>
       {/* 左侧：当前线索 */}
       <div style={{ flex: 1 }}>
@@ -77,11 +81,15 @@ export const HintBar: React.FC<HintBarProps> = ({
       <button
         onClick={onShowSolution}
         style={{
-          background: 'none',
-          border: 'none',
+          minHeight: 44,
+          background: colors.surface,
+          border: `1px solid ${colors.outline}`,
+          borderRadius: 999,
           color: colors.primary,
           cursor: 'pointer',
           fontSize: 14,
+          fontWeight: 800,
+          padding: '0 14px',
         }}
       >
         {showSolution ? '隐藏答案' : '显示答案'}

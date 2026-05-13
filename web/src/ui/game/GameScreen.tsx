@@ -5,6 +5,17 @@ import { Keyboard } from './Keyboard';
 import { HintBar } from './HintBar';
 import { SettingsDialog } from './SettingsDialog';
 import { colors } from '../theme/theme';
+import {
+  navButtonStyle,
+  pageHeaderActionsStyle,
+  pageHeaderLeftStyle,
+  pageHeaderStyle,
+  pageShellStyle,
+  pageTitleStyle,
+  primaryButtonStyle,
+  quietButtonStyle,
+} from '../theme/pageStyles';
+import { gameHeaderActionLabels } from './gameNavigation';
 
 interface GameScreenProps {
   state: GameState;
@@ -18,7 +29,7 @@ interface GameScreenProps {
   onNewGame: (rows?: number, cols?: number) => void;
   onShowWordList: () => void;
   onShowSearch: () => void;
-  onShowEditor: () => void;
+  onBackToStart: () => void;
 }
 
 export const GameScreen: React.FC<GameScreenProps> = ({
@@ -33,9 +44,10 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   onNewGame,
   onShowWordList,
   onShowSearch,
-  onShowEditor,
+  onBackToStart,
 }) => {
   const [showSettings, setShowSettings] = useState(false);
+  const [backLabel, searchLabel, wordListLabel, settingsLabel, newGameLabel] = gameHeaderActionLabels;
   const { isLoading, crossword, errorMessage, isSolved, selectedCell, currentWord, currentWords, currentDirection, showSolution, gridRows, gridCols, inputMode, candidateChars } = state;
 
   // 加载中
@@ -43,6 +55,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     return (
       <div style={centerStyle}>
         <span>生成谜题中...</span>
+        <button onClick={onBackToStart} style={{ ...quietButtonStyle, marginTop: 16 }}>返回开始</button>
       </div>
     );
   }
@@ -54,7 +67,10 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         <div style={{ color: colors.error, textAlign: 'center', marginBottom: 16 }}>
           {errorMessage}
         </div>
-        <button onClick={() => onNewGame()} style={buttonStyle}>重试</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onBackToStart} style={quietButtonStyle}>返回开始</button>
+          <button onClick={() => onNewGame()} style={buttonStyle}>重试</button>
+        </div>
       </div>
     );
   }
@@ -64,93 +80,52 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     return (
       <div style={centerStyle}>
         <div style={{ marginBottom: 16 }}>点击下方按钮开始新游戏</div>
-        <button onClick={() => onNewGame()} style={buttonStyle}>新游戏</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onBackToStart} style={quietButtonStyle}>返回开始</button>
+          <button onClick={() => onNewGame()} style={buttonStyle}>新游戏</button>
+        </div>
       </div>
     );
   }
 
   // 游戏内容
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100vh',
-      width: '100%',
-    }}>
+    <div style={{ ...pageShellStyle, height: '100vh' }}>
       {/* 顶部栏 */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '12px 16px',
-        backgroundColor: colors.primary,
-        color: colors.onPrimary,
-      }}>
-        <span style={{ fontSize: 18, fontWeight: 'bold' }}>填字游戏</span>
-        <div style={{ display: 'flex', gap: 8 }}>
+      <div style={pageHeaderStyle}>
+        <div style={pageHeaderLeftStyle}>
           <button
-            onClick={onShowEditor}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: colors.onPrimary,
-              cursor: 'pointer',
-              fontSize: 14,
-              padding: '4px 8px',
-            }}
+            onClick={onBackToStart}
+            style={navButtonStyle}
           >
-            创建
+            {backLabel}
           </button>
+          <span style={pageTitleStyle}>填字游戏</span>
+        </div>
+        <div style={pageHeaderActionsStyle}>
           <button
             onClick={onShowSearch}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: colors.onPrimary,
-              cursor: 'pointer',
-              fontSize: 14,
-              padding: '4px 8px',
-            }}
+            style={navButtonStyle}
           >
-            搜索
+            {searchLabel}
           </button>
           <button
             onClick={onShowWordList}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: colors.onPrimary,
-              cursor: 'pointer',
-              fontSize: 14,
-              padding: '4px 8px',
-            }}
+            style={navButtonStyle}
           >
-            词表
+            {wordListLabel}
           </button>
           <button
             onClick={() => setShowSettings(true)}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: colors.onPrimary,
-              cursor: 'pointer',
-              fontSize: 14,
-              padding: '4px 8px',
-            }}
+            style={navButtonStyle}
           >
-            设置
+            {settingsLabel}
           </button>
           <button
             onClick={() => onNewGame()}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: colors.onPrimary,
-              cursor: 'pointer',
-              fontSize: 14,
-            }}
+            style={primaryButtonStyle()}
           >
-            新游戏
+            {newGameLabel}
           </button>
         </div>
       </div>
@@ -184,6 +159,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         justifyContent: 'center',
         overflow: 'auto',
         padding: 8,
+        backgroundColor: 'transparent',
       }}>
         <CrosswordGrid
           crossword={crossword}
@@ -234,9 +210,10 @@ export const GameScreen: React.FC<GameScreenProps> = ({
           <div style={{
             backgroundColor: colors.surface,
             padding: 24,
-            borderRadius: 16,
+            borderRadius: 8,
             textAlign: 'center',
             minWidth: 200,
+            border: `1px solid ${colors.outline}`,
           }}>
             <h2 style={{ margin: '0 0 16px 0', color: colors.onSurface }}>恭喜！</h2>
             <p style={{ margin: '0 0 16px 0', color: colors.onSurfaceVariant }}>你已完成所有填词！</p>
@@ -263,10 +240,15 @@ const centerStyle: React.CSSProperties = {
   justifyContent: 'center',
   height: '100vh',
   width: '100vw',
+  backgroundColor: colors.background,
+  backgroundImage: 'var(--cw-background-pattern)',
+  backgroundSize: '28px 28px',
+  color: colors.onBackground,
 };
 
 const buttonStyle: React.CSSProperties = {
-  padding: '8px 16px',
+  minHeight: 44,
+  padding: '0 16px',
   backgroundColor: colors.primary,
   color: colors.onPrimary,
   border: 'none',

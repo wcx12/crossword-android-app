@@ -3,6 +3,14 @@ import { WordListInfo } from '../../data/model/WordListInfo';
 import { WordListDetail } from './WordListDetail';
 import { AddWordList } from './AddWordList';
 import { colors } from '../theme/theme';
+import {
+  navButtonStyle,
+  pageHeaderLeftStyle,
+  pageHeaderStyle,
+  pageShellStyle,
+  pageTitleStyle,
+  primaryButtonStyle,
+} from '../theme/pageStyles';
 
 interface WordListScreenProps {
   wordLists: WordListInfo[];
@@ -64,34 +72,18 @@ export const WordListScreen: React.FC<WordListScreenProps> = ({
   }
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100vh',
-      width: '100%',
-    }}>
+    <div style={{ ...pageShellStyle, height: '100vh' }}>
       {/* 顶部栏 */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        padding: '12px 16px',
-        backgroundColor: colors.primary,
-        color: colors.onPrimary,
-      }}>
-        <button
-          onClick={onBackToGame}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: colors.onPrimary,
-            cursor: 'pointer',
-            fontSize: 14,
-            marginRight: 16,
-          }}
-        >
-          ← 返回
-        </button>
-        <span style={{ fontSize: 18, fontWeight: 'bold' }}>选择词表</span>
+      <div style={pageHeaderStyle}>
+        <div style={pageHeaderLeftStyle}>
+          <button
+            onClick={onBackToGame}
+            style={navButtonStyle}
+          >
+            返回游戏
+          </button>
+          <span style={pageTitleStyle}>选择词表</span>
+        </div>
       </div>
 
       {/* 词表列表 */}
@@ -108,17 +100,9 @@ export const WordListScreen: React.FC<WordListScreenProps> = ({
         }}>
           <button
             onClick={() => setShowAddWordList(true)}
-            style={{
-              padding: '6px 12px',
-              backgroundColor: colors.secondaryContainer,
-              color: colors.onSecondaryContainer,
-              border: 'none',
-              borderRadius: 8,
-              fontSize: 12,
-              cursor: 'pointer',
-            }}
+            style={primaryButtonStyle()}
           >
-            + 添加自定义词库
+            添加自定义词库
           </button>
         </div>
 
@@ -205,9 +189,10 @@ const WordListItem: React.FC<WordListItemProps> = ({
         marginBottom: 12,
         backgroundColor: isSelected ? colors.primaryContainer : colors.surface,
         border: `1px solid ${colors.outline}`,
-        borderRadius: 12,
+        borderRadius: 8,
         cursor: 'pointer',
         transition: 'background-color 0.2s',
+        boxShadow: 'var(--cw-card-shadow)',
       }}
       onClick={onClick}
     >
@@ -243,7 +228,8 @@ const WordListItem: React.FC<WordListItemProps> = ({
             onDelete();
           }}
           style={{
-            padding: '6px 12px',
+            minHeight: 44,
+            padding: '0 12px',
             backgroundColor: colors.error,
             color: colors.onError,
             border: 'none',

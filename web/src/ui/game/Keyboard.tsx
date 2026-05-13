@@ -25,12 +25,14 @@ export const Keyboard: React.FC<KeyboardProps> = ({
   ];
 
   const keyStyle: React.CSSProperties = {
-    width: inputMode === 'candidateChars' ? 34 : 36,
-    height: 36,
+    width: inputMode === 'candidateChars' ? 32 : 34,
+    minHeight: 44,
+    height: 44,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,
+    color: colors.onSurface,
     border: `1px solid ${colors.outline}`,
     borderRadius: borderRadius.small,
     fontSize: inputMode === 'candidateChars' ? 18 : 16,
@@ -42,14 +44,23 @@ export const Keyboard: React.FC<KeyboardProps> = ({
   };
 
   return (
-    <div style={{ padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+    <div style={{
+      padding: 10,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: colors.surface,
+      borderTop: `1px solid ${colors.outline}`,
+      boxShadow: shadows.elevation1,
+    }}>
       {inputMode === 'candidateChars' && (
         <div style={{ fontSize: 12, color: colors.onSurfaceVariant, marginBottom: 4 }}>
           候选字
         </div>
       )}
       {rows.filter(row => row.length > 0).map((row, rowIdx) => (
-        <div key={rowIdx} style={{ display: 'flex', gap: 4 }}>
+        <div key={rowIdx} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
           {row.map(letter => (
             <button
               key={letter}
@@ -71,12 +82,13 @@ export const Keyboard: React.FC<KeyboardProps> = ({
       <button
         onClick={onDeleteClick}
         style={{
-          width: 120,
-          height: 40,
+          minWidth: 120,
+          minHeight: 44,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: colors.surfaceVariant,
+          color: colors.onSurface,
           border: `1px solid ${colors.outline}`,
           borderRadius: borderRadius.small,
           fontSize: 14,

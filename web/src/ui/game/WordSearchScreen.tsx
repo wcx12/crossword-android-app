@@ -4,6 +4,17 @@ import { WordEntry } from '../../data/model/WordEntry';
 import { searchWords, isValidPattern, SearchParams } from '../../domain/usecase/wordSearch';
 import { colors } from '../theme/theme';
 import { parseWordList } from '../../data/local/WordListLoader';
+import {
+  inputStyle,
+  labelStyle,
+  navButtonStyle,
+  pageHeaderLeftStyle,
+  pageHeaderStyle,
+  pageShellStyle,
+  pageTitleStyle,
+  primaryButtonStyle,
+  quietButtonStyle,
+} from '../theme/pageStyles';
 
 interface WordSearchScreenProps {
   wordLists: WordListInfo[];
@@ -67,62 +78,36 @@ export const WordSearchScreen: React.FC<WordSearchScreenProps> = ({
   const isPatternValid = isValidPattern(pattern);
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100vh',
-    }}>
+    <div style={{ ...pageShellStyle, height: '100vh' }}>
       {/* 顶部栏 */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        padding: '12px 16px',
-        backgroundColor: colors.primary,
-        color: colors.onPrimary,
-      }}>
-        <button
-          onClick={onBackToGame}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: colors.onPrimary,
-            cursor: 'pointer',
-            fontSize: 14,
-            marginRight: 16,
-          }}
-        >
-          ← 返回
-        </button>
-        <span style={{ fontSize: 18, fontWeight: 'bold' }}>{isChineseList ? '搜索成语' : '搜索单词'}</span>
+      <div style={pageHeaderStyle}>
+        <div style={pageHeaderLeftStyle}>
+          <button
+            onClick={onBackToGame}
+            style={navButtonStyle}
+          >
+            返回游戏
+          </button>
+          <span style={pageTitleStyle}>{isChineseList ? '搜索成语' : '搜索单词'}</span>
+        </div>
       </div>
 
       {/* 搜索表单 */}
       <div style={{
         padding: 16,
-        backgroundColor: colors.surfaceVariant,
-        borderBottom: `1px solid ${colors.outlineVariant}`,
+        backgroundColor: colors.surface,
+        borderBottom: `1px solid ${colors.outline}`,
+        boxShadow: 'var(--cw-card-shadow)',
       }}>
         {/* 选择词表 */}
         <div style={{ marginBottom: 16 }}>
-          <label style={{
-            display: 'block',
-            fontSize: 12,
-            color: colors.onSurfaceVariant,
-            marginBottom: 6,
-          }}>
+          <label style={labelStyle}>
             选择词表
           </label>
           <select
             value={selectedWordListId}
             onChange={(e) => setSelectedWordListId(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              fontSize: 14,
-              border: `1px solid ${colors.outline}`,
-              borderRadius: 8,
-              backgroundColor: colors.surface,
-            }}
+            style={inputStyle()}
           >
             {wordLists.map(w => (
               <option key={w.id} value={w.id}>{w.name} ({w.wordCount})</option>
@@ -132,12 +117,7 @@ export const WordSearchScreen: React.FC<WordSearchScreenProps> = ({
 
         {/* 已知位置模式 */}
         <div style={{ marginBottom: 16 }}>
-          <label style={{
-            display: 'block',
-            fontSize: 12,
-            color: colors.onSurfaceVariant,
-            marginBottom: 6,
-          }}>
+          <label style={labelStyle}>
             {isChineseList ? '已知位置（用 _ 表示未知，如 _蛇__）' : '已知位置（用 _ 表示未知，如 _O__E）'}
           </label>
           <input
@@ -146,13 +126,8 @@ export const WordSearchScreen: React.FC<WordSearchScreenProps> = ({
             onChange={(e) => setPattern(e.target.value.toUpperCase().replace(/\s+/g, ''))}
             placeholder={isChineseList ? '如：_蛇__' : '如：_O__E'}
             style={{
-              width: '100%',
-              padding: '8px 12px',
-              fontSize: 14,
+              ...inputStyle(!isPatternValid),
               fontFamily: 'monospace',
-              border: `1px solid ${!isPatternValid ? colors.error : colors.outline}`,
-              borderRadius: 8,
-              boxSizing: 'border-box',
             }}
           />
           {!isPatternValid && (
@@ -164,12 +139,7 @@ export const WordSearchScreen: React.FC<WordSearchScreenProps> = ({
 
         {/* 单词长度 */}
         <div style={{ marginBottom: 16 }}>
-          <label style={{
-            display: 'block',
-            fontSize: 12,
-            color: colors.onSurfaceVariant,
-            marginBottom: 6,
-          }}>
+          <label style={labelStyle}>
             {isChineseList ? '字数' : '单词长度'}
           </label>
           <input
@@ -179,26 +149,14 @@ export const WordSearchScreen: React.FC<WordSearchScreenProps> = ({
             placeholder={isChineseList ? '如：4' : '如：6'}
             min="1"
             max="30"
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              fontSize: 14,
-              border: `1px solid ${colors.outline}`,
-              borderRadius: 8,
-              boxSizing: 'border-box',
-            }}
+            style={inputStyle()}
           />
         </div>
 
         {/* 首位和末位 */}
         <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
           <div style={{ flex: 1 }}>
-            <label style={{
-              display: 'block',
-              fontSize: 12,
-              color: colors.onSurfaceVariant,
-              marginBottom: 6,
-            }}>
+            <label style={labelStyle}>
               {isChineseList ? '首字' : '首位字母'}
             </label>
             <input
@@ -207,23 +165,11 @@ export const WordSearchScreen: React.FC<WordSearchScreenProps> = ({
               onChange={(e) => setStartsWith(e.target.value.toUpperCase())}
               placeholder={isChineseList ? '如：画' : '如：M'}
               maxLength={1}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                fontSize: 14,
-                border: `1px solid ${colors.outline}`,
-                borderRadius: 8,
-                boxSizing: 'border-box',
-              }}
+              style={inputStyle()}
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label style={{
-              display: 'block',
-              fontSize: 12,
-              color: colors.onSurfaceVariant,
-              marginBottom: 6,
-            }}>
+            <label style={labelStyle}>
               {isChineseList ? '末字' : '末位字母'}
             </label>
             <input
@@ -232,14 +178,7 @@ export const WordSearchScreen: React.FC<WordSearchScreenProps> = ({
               onChange={(e) => setEndsWith(e.target.value.toUpperCase())}
               placeholder={isChineseList ? '如：足' : '如：E'}
               maxLength={1}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                fontSize: 14,
-                border: `1px solid ${colors.outline}`,
-                borderRadius: 8,
-                boxSizing: 'border-box',
-              }}
+              style={inputStyle()}
             />
           </div>
         </div>
@@ -250,15 +189,8 @@ export const WordSearchScreen: React.FC<WordSearchScreenProps> = ({
             onClick={handleSearch}
             disabled={loading}
             style={{
+              ...primaryButtonStyle(loading),
               flex: 1,
-              padding: '10px 16px',
-              backgroundColor: colors.primary,
-              color: colors.onPrimary,
-              border: 'none',
-              borderRadius: 8,
-              fontSize: 14,
-              fontWeight: 'bold',
-              cursor: 'pointer',
             }}
           >
             搜索
@@ -266,13 +198,8 @@ export const WordSearchScreen: React.FC<WordSearchScreenProps> = ({
           <button
             onClick={handleClear}
             style={{
-              padding: '10px 16px',
-              backgroundColor: 'transparent',
-              color: colors.primary,
-              border: `1px solid ${colors.outline}`,
-              borderRadius: 8,
-              fontSize: 14,
-              cursor: 'pointer',
+              ...quietButtonStyle,
+              minWidth: 92,
             }}
           >
             清空
@@ -299,9 +226,10 @@ export const WordSearchScreen: React.FC<WordSearchScreenProps> = ({
             </div>
             <div style={{
               backgroundColor: colors.surface,
-              borderRadius: 12,
+              borderRadius: 8,
               border: `1px solid ${colors.outline}`,
               overflow: 'hidden',
+              boxShadow: 'var(--cw-card-shadow)',
             }}>
               {results.map((word, index) => (
                 <div

@@ -1,52 +1,44 @@
-// Material3 颜色主题
 export const colors = {
-  // 主色调
-  primary: '#6750A4',
-  onPrimary: '#FFFFFF',
-  primaryContainer: '#EADDFF',
-  onPrimaryContainer: '#21005D',
+  primary: 'var(--cw-primary, #15803D)',
+  onPrimary: 'var(--cw-on-primary, #FFFFFF)',
+  primaryContainer: 'var(--cw-primary-container, #EAF7EF)',
+  onPrimaryContainer: 'var(--cw-on-primary-container, #14532D)',
 
-  // 次要色调
-  secondary: '#625B71',
-  onSecondary: '#FFFFFF',
-  secondaryContainer: '#E8DEF8',
-  onSecondaryContainer: '#1D192B',
+  secondary: 'var(--cw-secondary, #059669)',
+  onSecondary: 'var(--cw-on-secondary, #FFFFFF)',
+  secondaryContainer: 'var(--cw-secondary-container, #F0F7F3)',
+  onSecondaryContainer: 'var(--cw-on-secondary-container, #0F172A)',
+  accent: 'var(--cw-accent, #D97706)',
 
-  // 背景色
-  background: '#FFFBFE',
-  onBackground: '#1C1B1F',
-  surface: '#FFFBFE',
-  onSurface: '#1C1B1F',
-  surfaceVariant: '#E7E0EC',
-  onSurfaceVariant: '#49454F',
+  background: 'var(--cw-background, #F5FAF6)',
+  onBackground: 'var(--cw-on-background, #0F172A)',
+  surface: 'var(--cw-surface, #FFFFFF)',
+  onSurface: 'var(--cw-on-surface, #0F172A)',
+  surfaceVariant: 'var(--cw-surface-variant, #F0F7F3)',
+  onSurfaceVariant: 'var(--cw-on-surface-variant, #52635A)',
 
-  // 边框
-  outline: '#79747E',
-  outlineVariant: '#CAC4D0',
+  outline: 'var(--cw-outline, #DDEBE2)',
+  outlineVariant: 'var(--cw-outline-variant, #E8F3EC)',
 
-  // 网格颜色
-  cellEmpty: '#FFFFFF',
-  cellSelected: '#EADDFF',
-  cellHighlight: '#F6F1FB',
-  cellBlocked: '#1C1B1F',
+  cellEmpty: 'var(--cw-cell-empty, #FFFFFF)',
+  cellSelected: 'var(--cw-cell-selected, #EAF7EF)',
+  cellHighlight: 'var(--cw-cell-highlight, #F0F7F3)',
+  cellRelated: 'var(--cw-cell-related, #FFF7E6)',
+  cellBlocked: 'var(--cw-cell-blocked, #0F172A)',
 
-  // 文字颜色
-  textPrimary: '#1C1B1F',
-  textSecondary: '#49454F',
-  textTertiary: '#79747E',
+  textPrimary: 'var(--cw-on-surface, #0F172A)',
+  textSecondary: 'var(--cw-on-surface-variant, #52635A)',
+  textTertiary: 'var(--cw-outline, #DDEBE2)',
 
-  // 正确/错误
-  correct: '#2E7D32',
-  incorrect: '#C62828',
+  correct: 'var(--cw-correct, #15803D)',
+  incorrect: 'var(--cw-incorrect, #DC2626)',
 
-  // 错误色
-  error: '#B3261E',
-  onError: '#FFFFFF',
+  error: 'var(--cw-error, #DC2626)',
+  onError: 'var(--cw-on-error, #FFFFFF)',
 };
 
-// 字体配置
 export const typography = {
-  fontFamily: 'system-ui, -apple-system, sans-serif',
+  fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   fontSize: {
     displayLarge: 57,
     displayMedium: 45,
@@ -66,17 +58,15 @@ export const typography = {
   },
 };
 
-// 阴影效果
 export const shadows = {
-  elevation1: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)',
-  elevation2: '0 3px 6px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.24)',
-  elevation3: '0 10px 20px rgba(0,0,0,0.15), 0 3px 6px rgba(0,0,0,0.24)',
+  elevation1: 'var(--cw-card-shadow, 0 12px 28px rgba(15, 23, 42, 0.07))',
+  elevation2: 'var(--cw-card-shadow, 0 12px 28px rgba(15, 23, 42, 0.07))',
+  elevation3: 'var(--cw-shadow, 0 22px 55px rgba(21, 128, 61, 0.12))',
 };
 
-// 圆角
 export const borderRadius = {
   small: 4,
   medium: 8,
-  large: 12,
-  extraLarge: 16,
+  large: 8,
+  extraLarge: 8,
 };

@@ -1,12 +1,38 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { colors } from '../theme/theme';
+import {
+  inputStyle,
+  navButtonStyle,
+  pageHeaderLeftStyle,
+  pageHeaderStyle,
+  pageShellStyle,
+  pageTitleStyle,
+  primaryButtonStyle,
+  quietButtonStyle,
+} from '../theme/pageStyles';
+import {
+  deleteEntry,
+  deriveGrid,
+  getEntryChars,
+  normalizeEntryWord,
+  placeEntry,
+  removePlacement,
+  toPlayablePuzzle,
+  validatePlacement,
+} from './gridDraftLogic';
+import type {
+  DraftDirection,
+  DraftEntry,
+  DraftPlacement,
+  ValidationResult,
+} from './gridDraftLogic';
 
 interface WordData {
   word: string;
   clue: string;
   row: number;
   col: number;
-  direction: 'across' | 'down';
+  direction: DraftDirection;
 }
 
 interface GridEditorScreenProps {
@@ -14,664 +40,662 @@ interface GridEditorScreenProps {
   onPlay: (grid: { isBlack: boolean; letter: string }[][], words: WordData[]) => void;
 }
 
+type DragSource = 'pool' | 'grid';
+
+interface DragPayload {
+  entryId: string;
+  source: DragSource;
+}
+
+interface PreviewState {
+  entryId: string;
+  validation: ValidationResult;
+  cells: Array<{ row: number; col: number; letter: string }>;
+}
+
+const DRAG_MIME = 'application/x-crossword-entry';
+
+const createEntryId = () => `entry-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const directionLabel = (direction: DraftDirection) => (direction === 'across' ? '横向' : '纵向');
+
+const getPlacementCells = (
+  entry: DraftEntry | undefined,
+  placement: DraftPlacement,
+): Array<{ row: number; col: number; letter: string }> => {
+  if (!entry) return [];
+
+  return getEntryChars(entry).map((letter, index) => ({
+    row: placement.row + (placement.direction === 'down' ? index : 0),
+    col: placement.col + (placement.direction === 'across' ? index : 0),
+    letter,
+  }));
+};
+
+const parseDragPayload = (event: React.DragEvent): DragPayload | null => {
+  const rawPayload = event.dataTransfer.getData(DRAG_MIME);
+  if (!rawPayload) return null;
+
+  try {
+    const payload = JSON.parse(rawPayload) as Partial<DragPayload>;
+    if (
+      typeof payload.entryId === 'string' &&
+      (payload.source === 'pool' || payload.source === 'grid')
+    ) {
+      return { entryId: payload.entryId, source: payload.source };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+};
+
 export const GridEditorScreen: React.FC<GridEditorScreenProps> = ({ onBack, onPlay }) => {
   const [rows, setRows] = useState(10);
   const [cols, setCols] = useState(10);
-  // 网格初始全是黑色
-  const [grid, setGrid] = useState<{ isBlack: boolean; letter: string }[][]>(() =>
-    Array(rows).fill(null).map(() => Array(cols).fill(null).map(() => ({ isBlack: true, letter: '' })))
+  const [entries, setEntries] = useState<DraftEntry[]>([]);
+  const [placements, setPlacements] = useState<DraftPlacement[]>([]);
+  const [wordInput, setWordInput] = useState('');
+  const [clueInput, setClueInput] = useState('');
+  const [direction, setDirection] = useState<DraftDirection>('across');
+  const [activeDrag, setActiveDrag] = useState<DragPayload | null>(null);
+  const [preview, setPreview] = useState<PreviewState | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const grid = useMemo(
+    () => deriveGrid(entries, placements, rows, cols),
+    [entries, placements, rows, cols],
   );
-  const [words, setWords] = useState<WordData[]>([]);
-  const [currentEdit, setCurrentEdit] = useState<{ row: number; col: number; direction: 'across' | 'down' } | null>(null);
-  const [inputWord, setInputWord] = useState('');
-  const [inputClue, setInputClue] = useState('');
-  const [defaultDirection, setDefaultDirection] = useState<'across' | 'down'>('across');
-  const [savedGrid, setSavedGrid] = useState<{ isBlack: boolean; letter: string }[][] | null>(null);
-  const [conflictError, setConflictError] = useState<string | null>(null);
-  const [cursorPos, setCursorPos] = useState(0);
 
-  // 重新生成网格（重置为全黑色）
-  const regenerateGrid = useCallback((newRows: number, newCols: number) => {
-    setRows(newRows);
-    setCols(newCols);
-    setGrid(Array(newRows).fill(null).map(() => Array(newCols).fill(null).map(() => ({ isBlack: true, letter: '' }))));
-    setWords([]);
-    setCurrentEdit(null);
-    setInputWord('');
-    setInputClue('');
-    setConflictError(null);
-  }, []);
+  const placedEntryIds = useMemo(
+    () => new Set(placements.map((placement) => placement.entryId)),
+    [placements],
+  );
 
-  // 检查单词是否与现有单词冲突
-  const checkConflict = useCallback((word: string, startRow: number, startCol: number, direction: 'across' | 'down'): string | null => {
-    for (let i = 0; i < word.length; i++) {
-      let r = startRow, c = startCol;
-      if (direction === 'down') r += i;
-      else c += i;
+  const waitingEntries = useMemo(
+    () => entries.filter((entry) => !placedEntryIds.has(entry.id)),
+    [entries, placedEntryIds],
+  );
 
-      if (r >= rows || c >= cols) {
-        return `单词超出网格范围`;
-      }
+  const placedEntries = useMemo(
+    () =>
+      placements.flatMap((placement) => {
+        const entry = entries.find((candidate) => candidate.id === placement.entryId);
+        return entry ? [{ entry, placement }] : [];
+      }),
+    [entries, placements],
+  );
 
-      const existingLetter = grid[r][c].letter;
-      if (existingLetter && existingLetter !== word[i]) {
-        return `位置 (${r + 1}, ${c + 1}) 已有字母 '${existingLetter}'，无法填入 '${word[i]}'`;
-      }
-    }
-    return null;
-  }, [grid, rows, cols]);
-
-  // 双击格子开始编辑
-  const startEdit = (r: number, c: number, direction: 'across' | 'down') => {
-    // 如果正在编辑其他位置，先自动保存当前单词
-    if (currentEdit && (currentEdit.row !== r || currentEdit.col !== c || currentEdit.direction !== direction)) {
-      // 如果当前有输入，先保存
-      if (inputWord) {
-        // 检查冲突
-        const conflict = checkConflict(inputWord, currentEdit.row, currentEdit.col, currentEdit.direction);
-        if (conflict) {
-          // 有冲突，不允许切换
-          setConflictError(conflict);
-          return;
-        }
-        // 保存单词
-        const wordData: WordData = {
-          word: inputWord,
-          clue: inputClue,
-          row: currentEdit.row,
-          col: currentEdit.col,
-          direction: currentEdit.direction,
-        };
-        setWords(prev => {
-          const filtered = prev.filter(w => !(w.row === currentEdit.row && w.col === currentEdit.col && w.direction === currentEdit.direction));
-          return [...filtered, wordData];
+  const previewByCell = useMemo(() => {
+    const cellMap = new Map<string, { letter: string; valid: boolean }>();
+    preview?.cells.forEach((cell) => {
+      if (cell.row >= 0 && cell.row < rows && cell.col >= 0 && cell.col < cols) {
+        cellMap.set(`${cell.row}:${cell.col}`, {
+          letter: cell.letter,
+          valid: preview.validation.valid,
         });
-      } else if (savedGrid) {
-        // 没有输入，恢复到savedGrid
-        setGrid(savedGrid);
       }
-      // 清除编辑状态
-      setSavedGrid(null);
-      setCurrentEdit(null);
-      setInputWord('');
-      setInputClue('');
-      setConflictError(null);
-      setCursorPos(0);
-    }
+    });
+    return cellMap;
+  }, [cols, preview, rows]);
 
-    // 如果格子有字母，查找对应方向上的单词
-    if (grid[r][c].letter) {
-      const existingWord = words.find(w => {
-        // 只在相同方向上查找
-        if (w.direction !== direction) return false;
-        for (let i = 0; i < w.word.length; i++) {
-          let wr = w.row, wc = w.col;
-          if (w.direction === 'down') wr += i;
-          else wc += i;
-          if (wr === r && wc === c) return true;
-        }
-        return false;
-      });
+  const canPlay = placements.length > 0;
 
-      if (existingWord) {
-        // 如果该格子属于同方向的单词，以该单词的起点开始编辑
-        setCurrentEdit({ row: existingWord.row, col: existingWord.col, direction: existingWord.direction });
-        setInputWord(existingWord.word);
-        setInputClue(existingWord.clue);
-        setCursorPos(existingWord.word.length);
-        setSavedGrid(grid.map(row => row.map(cell => ({ ...cell }))));
-        return;
-      }
-
-      // 如果是不同方向的单词，或者是不同格子，允许作为新单词起点
-      // 但第一个字母必须匹配
-      if (grid[r][c].letter) {
-        setSavedGrid(grid.map(row => row.map(cell => ({ ...cell }))));
-        setCurrentEdit({ row: r, col: c, direction });
-        setInputWord(grid[r][c].letter || '');
-        setInputClue('');
-        setCursorPos(1);
-        return;
-      }
-    }
-
-    // 保存当前网格状态
-    setSavedGrid(grid.map(row => row.map(cell => ({ ...cell }))));
-    setCurrentEdit({ row: r, col: c, direction });
-    setInputWord(grid[r][c].letter || '');
-    setInputClue('');
-    setCursorPos(grid[r][c].letter ? 1 : 0);
+  const resetPreview = () => {
+    setPreview(null);
   };
 
-  // 输入单词（基于光标位置）
-  const handleWordInput = useCallback((value: string) => {
-    const upperValue = value.toUpperCase();
+  const setDragData = (
+    event: React.DragEvent,
+    entryId: string,
+    source: DragSource,
+  ) => {
+    const payload = { entryId, source };
+    event.dataTransfer.setData(DRAG_MIME, JSON.stringify(payload));
+    event.dataTransfer.effectAllowed = 'move';
+    setActiveDrag(payload);
+    setMessage(null);
+  };
 
-    if (!currentEdit) return;
+  const finishDrag = () => {
+    setActiveDrag(null);
+    resetPreview();
+  };
 
-    // 如果输入为空，恢复到savedGrid状态
-    if (upperValue === '') {
-      if (savedGrid) {
-        setGrid(savedGrid);
-        setSavedGrid(null);
-      }
-      setInputWord('');
-      setCursorPos(0);
-      setConflictError(null);
+  const handleAddEntry = () => {
+    const normalizedWord = normalizeEntryWord(wordInput);
+    if (!normalizedWord) {
+      setMessage('请先输入词或成语。');
       return;
     }
 
-    const { row, col, direction } = currentEdit;
+    setEntries((currentEntries) => [
+      ...currentEntries,
+      {
+        id: createEntryId(),
+        word: normalizedWord,
+        clue: clueInput.trim(),
+      },
+    ]);
+    setWordInput('');
+    setClueInput('');
+    setMessage(null);
+  };
 
-    // 基于savedGrid检查冲突（savedGrid必须存在才检查）
-    if (savedGrid) {
-      for (let i = 0; i < upperValue.length; i++) {
-        let r = row, c = col;
-        if (direction === 'down') r += i;
-        else c += i;
+  const resizeGrid = (nextRows: number, nextCols: number) => {
+    const safeRows = Math.min(15, Math.max(5, nextRows || 10));
+    const safeCols = Math.min(15, Math.max(5, nextCols || 10));
 
-        if (r < rows && c < cols) {
-          const existingLetter = savedGrid[r][c].letter;
-          if (existingLetter && existingLetter !== upperValue[i]) {
-            setConflictError(`冲突：位置 (${r + 1}, ${c + 1}) 已有字母 '${existingLetter}'`);
-            return; // 不更新任何状态
-          }
-        }
-      }
-    }
+    setRows(safeRows);
+    setCols(safeCols);
+    setPlacements((currentPlacements) => {
+      const keptPlacements = currentPlacements.filter((placement) =>
+        validatePlacement(entries, currentPlacements, placement, safeRows, safeCols, {
+          ignoreEntryId: placement.entryId,
+        }).valid,
+      );
 
-    // 冲突检查通过，更新状态
-    setInputWord(upperValue);
-    setCursorPos(upperValue.length);
-    setConflictError(null);
-
-    setGrid(prevGrid => {
-      // 基于savedGrid构建新网格（如果有的话）
-      const baseGrid = savedGrid ? savedGrid.map(r => r.map(c => ({ ...c }))) : prevGrid.map(r => r.map(c => ({ ...c })));
-      const newGrid = baseGrid;
-
-      // 清除当前编辑的单词占据的所有格子
-      const currentWordIndex = words.findIndex(w => w.row === row && w.col === col && w.direction === direction);
-      if (currentWordIndex >= 0) {
-        const oldWord = words[currentWordIndex];
-        for (let i = 0; i < oldWord.word.length; i++) {
-          let r = oldWord.row, c = oldWord.col;
-          if (direction === 'down') r += i;
-          else c += i;
-          if (r < rows && c < cols) {
-            newGrid[r][c].letter = '';
-            newGrid[r][c].isBlack = true;
-          }
-        }
+      if (keptPlacements.length !== currentPlacements.length) {
+        setMessage('网格尺寸变小后，超出范围的词条已回到待放入。');
       }
 
-      // 填入新字母
-      for (let i = 0; i < upperValue.length; i++) {
-        let r = row, c = col;
-        if (direction === 'down') r += i;
-        else c += i;
-
-        if (r < rows && c < cols) {
-          newGrid[r][c].letter = upperValue[i];
-          newGrid[r][c].isBlack = false;
-        }
-      }
-
-      return newGrid;
+      return keptPlacements;
     });
-  }, [currentEdit, words, rows, cols, savedGrid]);
+  };
 
-  // 删除当前光标位置的字母
-  const handleBackspace = useCallback(() => {
-    if (!currentEdit || cursorPos === 0) return;
+  const handleDeleteEntry = (entryId: string) => {
+    const result = deleteEntry(entries, placements, entryId);
+    setEntries(result.entries);
+    setPlacements(result.placements);
+    setMessage(null);
+  };
 
-    const { row, col, direction } = currentEdit;
-    const newCursorPos = cursorPos - 1;
-    const newWord = inputWord.slice(0, newCursorPos);
+  const handleGridDragOver = (
+    event: React.DragEvent,
+    row: number,
+    col: number,
+  ) => {
+    const payload = activeDrag;
+    if (!payload) return;
 
-    // 如果删除到空，恢复savedGrid状态
-    if (newWord === '') {
-      if (savedGrid) {
-        setGrid(savedGrid);
-        setSavedGrid(null);
-      }
-      setInputWord('');
-      setCursorPos(0);
-      setConflictError(null);
-      return;
-    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
 
-    // 基于savedGrid重建网格（savedGrid是干净的，不包含当前编辑的单词）
-    setGrid(prevGrid => {
-      // 如果有savedGrid，从它重建（这样可以保留其他单词的字母）
-      // 如果没有savedGrid，说明是编辑已存在的单词，从prevGrid重建
-      const baseGrid = savedGrid
-        ? savedGrid.map(r => r.map(c => ({ ...c })))
-        : prevGrid.map(r => r.map(c => ({ ...c })));
+    const draftPlacement: DraftPlacement = {
+      entryId: payload.entryId,
+      row,
+      col,
+      direction,
+    };
+    const entry = entries.find((candidate) => candidate.id === payload.entryId);
+    const validation = validatePlacement(
+      entries,
+      placements,
+      draftPlacement,
+      rows,
+      cols,
+      payload.source === 'grid' ? { ignoreEntryId: payload.entryId } : undefined,
+    );
 
-      // 清除当前单词占据的所有格子（从0到当前inputWord长度-1）
-      for (let i = 0; i < inputWord.length; i++) {
-        let r = row, c = col;
-        if (direction === 'down') r += i;
-        else c += i;
-        if (r < rows && c < cols) {
-          baseGrid[r][c].letter = '';
-          baseGrid[r][c].isBlack = true;
-        }
-      }
-
-      // 重新填入newWord
-      for (let i = 0; i < newWord.length; i++) {
-        let r = row, c = col;
-        if (direction === 'down') r += i;
-        else c += i;
-        if (r < rows && c < cols) {
-          baseGrid[r][c].letter = newWord[i];
-          baseGrid[r][c].isBlack = false;
-        }
-      }
-
-      return baseGrid;
+    setPreview({
+      entryId: payload.entryId,
+      validation,
+      cells: getPlacementCells(entry, draftPlacement),
     });
+  };
 
-    setInputWord(newWord);
-    setCursorPos(newCursorPos);
-  }, [currentEdit, cursorPos, inputWord, rows, cols, savedGrid]);
+  const handleGridDrop = (
+    event: React.DragEvent,
+    row: number,
+    col: number,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
 
-  // 确认单词
-  const confirmWord = useCallback(() => {
-    if (!currentEdit || !inputWord) return;
+    const payload = parseDragPayload(event) ?? activeDrag;
+    finishDrag();
+    if (!payload) return;
 
-    const { row, col, direction } = currentEdit;
-
-    // 检查冲突
-    const conflict = checkConflict(inputWord, row, col, direction);
-    if (conflict) {
-      setConflictError(conflict);
-      return;
-    }
-
-    const wordData: WordData = {
-      word: inputWord,
-      clue: inputClue,
+    const draftPlacement: DraftPlacement = {
+      entryId: payload.entryId,
       row,
       col,
       direction,
     };
 
-    setWords(prev => {
-      // 替换同位置同方向的单词
-      const filtered = prev.filter(w => !(w.row === row && w.col === col && w.direction === direction));
-      return [...filtered, wordData];
-    });
+    const result = placeEntry(
+      entries,
+      placements,
+      draftPlacement,
+      rows,
+      cols,
+      payload.source === 'grid' ? { ignoreEntryId: payload.entryId } : undefined,
+    );
 
-    setCurrentEdit(null);
-    setInputWord('');
-    setInputClue('');
-    setSavedGrid(null);
-    setConflictError(null);
-  }, [currentEdit, inputWord, inputClue, checkConflict]);
-
-  // 删除单词
-  const deleteWord = useCallback((index: number) => {
-    const word = words[index];
-    const newGrid = grid.map(r => r.map(c => ({ ...c })));
-
-    // 清除该单词占据的所有格子
-    for (let i = 0; i < word.word.length; i++) {
-      let r = word.row, c = word.col;
-      if (word.direction === 'down') r += i;
-      else c += i;
-
-      if (r < rows && c < cols) {
-        // 检查是否被其他单词占用
-        const isUsedByOther = words.some((w, idx) => {
-          if (idx === index) return false;
-          for (let j = 0; j < w.word.length; j++) {
-            let wr = w.row, wc = w.col;
-            if (w.direction === 'down') wr += j;
-            else wc += j;
-            if (wr === r && wc === c) return true;
-          }
-          return false;
-        });
-
-        if (!isUsedByOther) {
-          newGrid[r][c].letter = '';
-          newGrid[r][c].isBlack = true;
-        }
-      }
-    }
-
-    setGrid(newGrid);
-    setWords(prev => prev.filter((_, i) => i !== index));
-  }, [grid, words, rows, cols]);
-
-  // 获取当前编辑的单词占据的格子
-  const getCurrentWordCells = () => {
-    if (!currentEdit) return [];
-    const cells: { row: number; col: number }[] = [];
-    for (let i = 0; i < Math.max(1, inputWord.length); i++) {
-      let r = currentEdit.row, c = currentEdit.col;
-      if (currentEdit.direction === 'down') r += i;
-      else c += i;
-      cells.push({ row: r, col: c });
-    }
-    return cells;
-  };
-
-  // 获取当前光标位置的格子
-  const getCursorCell = () => {
-    if (!currentEdit || cursorPos < 0) return null;
-    let r = currentEdit.row, c = currentEdit.col;
-    if (currentEdit.direction === 'down') r += cursorPos;
-    else c += cursorPos;
-    if (r >= rows || c >= cols) return null;
-    return { row: r, col: c };
-  };
-
-  const currentWordCells = getCurrentWordCells();
-  const cursorCell = getCursorCell();
-
-  // 验证网格是否有效
-  const isValidGrid = () => {
-    return words.length > 0;
-  };
-
-  // 键盘事件处理
-  useEffect(() => {
-    if (!currentEdit) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        confirmWord();
-      } else if (e.key === 'Escape') {
-        if (savedGrid) {
-          setGrid(savedGrid);
-          setSavedGrid(null);
-        }
-        setCurrentEdit(null);
-        setInputWord('');
-        setInputClue('');
-        setConflictError(null);
-        setCursorPos(0);
-      } else if (/^[a-zA-Z]$/.test(e.key)) {
-        handleWordInput(inputWord + e.key);
-      } else if (e.key === 'Backspace') {
-        e.preventDefault();
-        handleBackspace();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentEdit, inputWord, savedGrid, confirmWord, handleWordInput, handleBackspace]);
-
-  // 开始游戏
-  const handlePlay = () => {
-    if (!isValidGrid()) {
-      alert('请至少添加一个单词');
+    if (!result.validation.valid) {
+      setMessage(result.validation.reason ?? '这个位置无法放置该词条。');
       return;
     }
 
-    onPlay(grid, words);
+    setPlacements(result.placements);
+    setMessage(null);
   };
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      {/* 顶部栏 */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        padding: '12px 16px',
-        backgroundColor: colors.primary,
-        color: colors.onPrimary,
-      }}>
-        <button onClick={onBack} style={{
-          background: 'none', border: 'none', color: colors.onPrimary, cursor: 'pointer', fontSize: 14, marginRight: 16,
-        }}>
-          ← 返回
+  const handleGridDragLeave = (event: React.DragEvent) => {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
+      return;
+    }
+    resetPreview();
+  };
+
+  const handlePoolDragOver = (event: React.DragEvent) => {
+    if (activeDrag?.source !== 'grid') return;
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  };
+
+  const handlePoolDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+
+    const payload = parseDragPayload(event) ?? activeDrag;
+    finishDrag();
+    if (!payload || payload.source !== 'grid') return;
+
+    setPlacements((currentPlacements) => removePlacement(currentPlacements, payload.entryId));
+    setMessage(null);
+  };
+
+  const handlePlay = () => {
+    const puzzle = toPlayablePuzzle(entries, placements, rows, cols);
+    if (puzzle.words.length === 0) {
+      setMessage('请至少把一个词条拖入网格。');
+      return;
+    }
+
+    onPlay(puzzle.grid, puzzle.words);
+  };
+
+  const renderEntryCard = (
+    entry: DraftEntry,
+    source: DragSource,
+    placement?: DraftPlacement,
+  ) => (
+    <div
+      key={entry.id}
+      draggable
+      onDragStart={(event) => setDragData(event, entry.id, source)}
+      onDragEnd={finishDrag}
+      style={{
+        padding: '10px 12px',
+        border: `1px solid ${colors.outline}`,
+        borderRadius: 8,
+        backgroundColor: colors.surface,
+        boxShadow: 'var(--cw-card-shadow)',
+        cursor: 'grab',
+        display: 'grid',
+        gap: 6,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div
+            style={{
+              color: colors.onSurface,
+              fontSize: 16,
+              fontWeight: 900,
+              lineHeight: 1.2,
+              overflowWrap: 'anywhere',
+            }}
+          >
+            {normalizeEntryWord(entry.word)}
+          </div>
+          <div
+            style={{
+              color: colors.onSurfaceVariant,
+              fontSize: 12,
+              lineHeight: 1.35,
+              overflowWrap: 'anywhere',
+            }}
+          >
+            {entry.clue || '无提示'}
+          </div>
+        </div>
+        <button
+          onClick={() => handleDeleteEntry(entry.id)}
+          style={{
+            minHeight: 32,
+            border: 'none',
+            borderRadius: 8,
+            backgroundColor: colors.error,
+            color: colors.onError,
+            cursor: 'pointer',
+            fontSize: 12,
+            fontWeight: 800,
+            padding: '0 10px',
+          }}
+        >
+          删除
         </button>
-        <span style={{ fontSize: 18, fontWeight: 'bold' }}>创建谜题</span>
+      </div>
+      {placement && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            color: colors.onSurfaceVariant,
+            fontSize: 12,
+          }}
+        >
+          <span>
+            {directionLabel(placement.direction)} · 第 {placement.row + 1} 行，第 {placement.col + 1} 列
+          </span>
+          <button
+            onClick={() => {
+              setPlacements((currentPlacements) => removePlacement(currentPlacements, entry.id));
+              setMessage(null);
+            }}
+            style={{
+              ...quietButtonStyle,
+              minHeight: 32,
+              padding: '0 10px',
+              fontSize: 12,
+            }}
+          >
+            收回
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div style={{ ...pageShellStyle, height: '100vh' }}>
+      <div style={pageHeaderStyle}>
+        <div style={pageHeaderLeftStyle}>
+          <button onClick={onBack} style={navButtonStyle}>
+            返回
+          </button>
+          <span style={pageTitleStyle}>创建谜题</span>
+        </div>
       </div>
 
-      {/* 工具栏 */}
-      <div style={{ padding: '12px 16px', backgroundColor: colors.surfaceVariant, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div
+        style={{
+          padding: '12px 16px',
+          backgroundColor: colors.surface,
+          borderBottom: `1px solid ${colors.outline}`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          flexWrap: 'wrap',
+          boxShadow: 'var(--cw-card-shadow)',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 12 }}>网格:</span>
+          <span style={{ color: colors.onSurfaceVariant, fontSize: 12, fontWeight: 800 }}>网格</span>
           <input
             type="number"
+            min={5}
+            max={15}
             value={rows}
-            onChange={e => regenerateGrid(parseInt(e.target.value) || 10, cols)}
-            min={5}
-            max={15}
-            style={{ width: 50, padding: '4px 8px', fontSize: 14 }}
+            onChange={(event) => resizeGrid(Number(event.target.value), cols)}
+            style={{ ...inputStyle(), width: 68 }}
           />
-          <span>×</span>
+          <span style={{ color: colors.onSurfaceVariant }}>x</span>
           <input
             type="number"
-            value={cols}
-            onChange={e => regenerateGrid(rows, parseInt(e.target.value) || 10)}
             min={5}
             max={15}
-            style={{ width: 50, padding: '4px 8px', fontSize: 14 }}
+            value={cols}
+            onChange={(event) => resizeGrid(rows, Number(event.target.value))}
+            style={{ ...inputStyle(), width: 68 }}
           />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: colors.onSurfaceVariant, fontSize: 12, fontWeight: 800 }}>方向</span>
+          {(['across', 'down'] as DraftDirection[]).map((candidateDirection) => {
+            const selected = direction === candidateDirection;
+            return (
+              <button
+                key={candidateDirection}
+                onClick={() => setDirection(candidateDirection)}
+                style={{
+                  minHeight: 36,
+                  padding: '0 12px',
+                  border: `1px solid ${selected ? colors.primary : colors.outline}`,
+                  borderRadius: 999,
+                  backgroundColor: selected ? colors.primary : colors.surface,
+                  color: selected ? colors.onPrimary : colors.primary,
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  fontWeight: 900,
+                }}
+              >
+                {directionLabel(candidateDirection)}
+              </button>
+            );
+          })}
         </div>
         <div style={{ flex: 1 }} />
         <button
           onClick={handlePlay}
-          disabled={!isValidGrid()}
-          style={{
-            padding: '6px 12px',
-            backgroundColor: isValidGrid() ? colors.primary : colors.outline,
-            color: colors.onPrimary,
-            border: 'none',
-            borderRadius: 6,
-            fontSize: 12,
-            cursor: isValidGrid() ? 'pointer' : 'not-allowed',
-          }}
+          disabled={!canPlay}
+          style={primaryButtonStyle(!canPlay)}
         >
           开始游戏
         </button>
       </div>
 
-      {/* 提示 + 方向选择 */}
-      <div style={{ padding: '8px 16px', backgroundColor: colors.surface, fontSize: 12, color: colors.onSurfaceVariant, borderBottom: `1px solid ${colors.outlineVariant}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>单击格子开始输入 | 已有字母的格子单击可编辑</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11 }}>方向:</span>
-          <button
-            onClick={() => setDefaultDirection('across')}
-            style={{
-              padding: '2px 8px',
-              backgroundColor: defaultDirection === 'across' ? colors.primary : 'transparent',
-              color: defaultDirection === 'across' ? colors.onPrimary : colors.primary,
-              border: `1px solid ${colors.outline}`,
-              borderRadius: 4,
-              fontSize: 11,
-              cursor: 'pointer',
-            }}
-          >
-            横向
-          </button>
-          <button
-            onClick={() => setDefaultDirection('down')}
-            style={{
-              padding: '2px 8px',
-              backgroundColor: defaultDirection === 'down' ? colors.primary : 'transparent',
-              color: defaultDirection === 'down' ? colors.onPrimary : colors.primary,
-              border: `1px solid ${colors.outline}`,
-              borderRadius: 4,
-              fontSize: 11,
-              cursor: 'pointer',
-            }}
-          >
-            纵向
-          </button>
+      {message && (
+        <div
+          style={{
+            padding: '8px 16px',
+            backgroundColor: colors.surfaceVariant,
+            borderBottom: `1px solid ${colors.outline}`,
+            color: message.includes('无法') || message.includes('请') ? colors.error : colors.onSurfaceVariant,
+            fontSize: 13,
+            fontWeight: 800,
+          }}
+        >
+          {message}
         </div>
-      </div>
+      )}
 
-      {/* 网格 */}
-      <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-        <div style={{ display: 'inline-block', backgroundColor: colors.surface, border: `2px solid ${colors.outline}`, borderRadius: 4 }}>
-          {grid.map((row, r) => (
-            <div key={r} style={{ display: 'flex' }}>
-              {row.map((cell, c) => {
-                const isCurrentCell = currentWordCells.some(cell => cell.row === r && cell.col === c);
-                const isCursorCell = cursorCell && cursorCell.row === r && cursorCell.col === c;
-                const hasLetter = cell.letter !== '';
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'grid',
+          gridTemplateColumns: '320px minmax(520px, 1fr)',
+          gap: 16,
+          padding: 16,
+          overflow: 'auto',
+        }}
+      >
+        <aside
+          style={{
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            overflow: 'auto',
+            paddingRight: 2,
+          }}
+        >
+          <section
+            style={{
+              border: `1px solid ${colors.outline}`,
+              borderRadius: 8,
+              backgroundColor: colors.surface,
+              boxShadow: 'var(--cw-card-shadow)',
+              padding: 12,
+              display: 'grid',
+              gap: 10,
+            }}
+          >
+            <div style={{ color: colors.onSurface, fontSize: 15, fontWeight: 900 }}>新建词条</div>
+            <input
+              type="text"
+              value={wordInput}
+              onChange={(event) => setWordInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  handleAddEntry();
+                }
+              }}
+              placeholder="词或成语"
+              style={inputStyle(!wordInput.trim() && message === '请先输入词或成语。')}
+            />
+            <input
+              type="text"
+              value={clueInput}
+              onChange={(event) => setClueInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  handleAddEntry();
+                }
+              }}
+              placeholder="提示（可选）"
+              style={inputStyle()}
+            />
+            <button onClick={handleAddEntry} style={primaryButtonStyle(false)}>
+              添加到词条池
+            </button>
+          </section>
+
+          <section
+            onDragOver={handlePoolDragOver}
+            onDrop={handlePoolDrop}
+            style={{
+              border: `1px dashed ${activeDrag?.source === 'grid' ? colors.primary : colors.outline}`,
+              borderRadius: 8,
+              backgroundColor: activeDrag?.source === 'grid' ? colors.primaryContainer : colors.surfaceVariant,
+              padding: 12,
+              display: 'grid',
+              gap: 10,
+            }}
+          >
+            <div style={{ color: colors.onSurface, fontSize: 15, fontWeight: 900 }}>
+              待放入 ({waitingEntries.length})
+            </div>
+            {waitingEntries.length === 0 ? (
+              <div style={{ color: colors.onSurfaceVariant, fontSize: 13, lineHeight: 1.5 }}>
+                新词条会出现在这里。已放置词条拖回左侧可取消放置。
+              </div>
+            ) : (
+              waitingEntries.map((entry) => renderEntryCard(entry, 'pool'))
+            )}
+          </section>
+
+          <section
+            style={{
+              border: `1px solid ${colors.outline}`,
+              borderRadius: 8,
+              backgroundColor: colors.surface,
+              boxShadow: 'var(--cw-card-shadow)',
+              padding: 12,
+              display: 'grid',
+              gap: 10,
+            }}
+          >
+            <div style={{ color: colors.onSurface, fontSize: 15, fontWeight: 900 }}>
+              已放置 ({placedEntries.length})
+            </div>
+            {placedEntries.length === 0 ? (
+              <div style={{ color: colors.onSurfaceVariant, fontSize: 13, lineHeight: 1.5 }}>
+                从待放入拖到右侧网格后会显示在这里。
+              </div>
+            ) : (
+              placedEntries.map(({ entry, placement }) => renderEntryCard(entry, 'grid', placement))
+            )}
+          </section>
+        </aside>
+
+        <main
+          onDragLeave={handleGridDragLeave}
+          style={{
+            minHeight: 0,
+            overflow: 'auto',
+            border: `1px solid ${colors.outline}`,
+            borderRadius: 8,
+            backgroundColor: colors.surface,
+            boxShadow: 'var(--cw-card-shadow)',
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              display: 'inline-grid',
+              gridTemplateColumns: `repeat(${cols}, 34px)`,
+              gridTemplateRows: `repeat(${rows}, 34px)`,
+              border: `2px solid ${colors.outline}`,
+              backgroundColor: colors.outline,
+              gap: 1,
+              userSelect: 'none',
+            }}
+          >
+            {grid.flatMap((row, rowIndex) =>
+              row.map((cell, colIndex) => {
+                const ownerId = cell.owners[0];
+                const previewCell = previewByCell.get(`${rowIndex}:${colIndex}`);
+                const previewIsValid = previewCell?.valid ?? false;
+                const isPreview = Boolean(previewCell);
+                const displayedLetter = previewCell?.letter ?? cell.letter;
+                const isOpen = !cell.isBlack || isPreview;
+
                 return (
                   <div
-                    key={c}
-                    onClick={() => startEdit(r, c, defaultDirection)}
+                    key={`${rowIndex}-${colIndex}`}
+                    draggable={Boolean(ownerId)}
+                    onDragStart={(event) => {
+                      if (ownerId) {
+                        setDragData(event, ownerId, 'grid');
+                      }
+                    }}
+                    onDragEnd={finishDrag}
+                    onDragOver={(event) => handleGridDragOver(event, rowIndex, colIndex)}
+                    onDrop={(event) => handleGridDrop(event, rowIndex, colIndex)}
+                    title={ownerId ? '拖动已放置词条' : undefined}
                     style={{
-                      width: 32,
-                      height: 32,
+                      width: 34,
+                      height: 34,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      backgroundColor: cell.isBlack ? colors.cellBlocked : isCursorCell ? colors.primary : isCurrentCell ? colors.cellHighlight : colors.cellEmpty,
-                      border: `1px solid ${isCursorCell ? colors.onPrimary : isCurrentCell ? colors.primary : colors.outlineVariant}`,
-                      outline: isCursorCell ? `2px solid ${colors.primary}` : 'none',
-                      outlineOffset: '-2px',
-                      cursor: 'pointer',
-                      fontSize: 14,
-                      fontWeight: 'bold',
-                      color: cell.isBlack ? colors.onPrimary : isCursorCell ? colors.onPrimary : colors.textPrimary,
+                      boxSizing: 'border-box',
+                      backgroundColor: isPreview
+                        ? previewIsValid
+                          ? colors.cellRelated
+                          : '#FEE2E2'
+                        : isOpen
+                          ? colors.cellEmpty
+                          : colors.cellBlocked,
+                      color: isPreview && !previewIsValid
+                        ? colors.error
+                        : isOpen
+                          ? colors.textPrimary
+                          : colors.onPrimary,
+                      border: isPreview
+                        ? `2px solid ${previewIsValid ? colors.accent : colors.error}`
+                        : `1px solid ${isOpen ? colors.outlineVariant : colors.cellBlocked}`,
+                      cursor: ownerId ? 'grab' : activeDrag ? 'copy' : 'default',
+                      fontSize: 15,
+                      fontWeight: 900,
+                      lineHeight: 1,
                     }}
                   >
-                    {hasLetter ? cell.letter : (isCursorCell && currentEdit ? '_' : '')}
+                    {displayedLetter}
                   </div>
                 );
-              })}
-            </div>
-          ))}
-        </div>
-
-        {/* 已添加的单词列表 */}
-        {words.length > 0 && (
-          <div style={{ marginTop: 16 }}>
-            <div style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 8, color: colors.onSurface }}>
-              已添加的单词 ({words.length})
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {words.map((word, index) => (
-                <div
-                  key={index}
-                  style={{
-                    padding: '8px 12px',
-                    backgroundColor: colors.surface,
-                    border: `1px solid ${colors.outline}`,
-                    borderRadius: 8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 'bold', fontSize: 14 }}>{word.word}</div>
-                    <div style={{ fontSize: 11, color: colors.onSurfaceVariant }}>{word.clue || '无提示'}</div>
-                  </div>
-                  <button
-                    onClick={() => deleteWord(index)}
-                    style={{
-                      padding: '2px 6px',
-                      backgroundColor: colors.error,
-                      color: colors.onError,
-                      border: 'none',
-                      borderRadius: 4,
-                      fontSize: 10,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    删除
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 底部输入区 */}
-      <div style={{
-        padding: 16,
-        backgroundColor: colors.surface,
-        borderTop: `1px solid ${colors.outlineVariant}`,
-      }}>
-        {currentEdit ? (
-          <div>
-            {conflictError && (
-              <div style={{ color: colors.error, fontSize: 12, marginBottom: 8 }}>
-                {conflictError}
-              </div>
+              }),
             )}
-            <div style={{ fontSize: 14, marginBottom: 8, color: colors.primary }}>
-              单词: {inputWord || '(输入中...)'} | 方向: {currentEdit.direction === 'across' ? '横向' : '纵向'}
-            </div>
-            <input
-              type="text"
-              value={inputClue}
-              onChange={e => setInputClue(e.target.value)}
-              placeholder="输入提示（可选）"
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                fontSize: 14,
-                border: `1px solid ${colors.outline}`,
-                borderRadius: 8,
-                boxSizing: 'border-box',
-                marginBottom: 8,
-              }}
-            />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={confirmWord}
-                disabled={!inputWord}
-                style={{
-                  flex: 1,
-                  padding: '8px 16px',
-                  backgroundColor: inputWord ? colors.primary : colors.outline,
-                  color: colors.onPrimary,
-                  border: 'none',
-                  borderRadius: 8,
-                  fontSize: 14,
-                  cursor: inputWord ? 'pointer' : 'not-allowed',
-                }}
-              >
-                确认 (Enter)
-              </button>
-              <button
-                onClick={() => {
-                  if (savedGrid) {
-                    setGrid(savedGrid);
-                    setSavedGrid(null);
-                  }
-                  setCurrentEdit(null);
-                  setInputWord('');
-                  setInputClue('');
-                  setConflictError(null);
-                }}
-                style={{
-                  flex: 1,
-                  padding: '8px 16px',
-                  backgroundColor: 'transparent',
-                  color: colors.onSurfaceVariant,
-                  border: `1px solid ${colors.outline}`,
-                  borderRadius: 8,
-                  fontSize: 14,
-                  cursor: 'pointer',
-                }}
-              >
-                取消 (Esc)
-              </button>
-            </div>
           </div>
-        ) : (
-          <div style={{ textAlign: 'center', color: colors.onSurfaceVariant, fontSize: 14 }}>
-            单击网格上的格子开始添加单词
-          </div>
-        )}
+        </main>
       </div>
     </div>
   );

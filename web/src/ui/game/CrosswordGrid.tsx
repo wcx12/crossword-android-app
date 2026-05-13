@@ -42,7 +42,7 @@ export const CrosswordGrid: React.FC<CrosswordGridProps> = ({
       if (w.id === currentWord?.id) return false;
       return getCells(w).some(([r, c]) => r === row && c === col);
     });
-    if (isInRelatedWord) return colors.cellHighlight + '99'; // 透明度
+    if (isInRelatedWord) return colors.cellRelated;
 
     return colors.cellEmpty;
   };

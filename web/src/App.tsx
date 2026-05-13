@@ -3,10 +3,16 @@ import { GameScreen } from './ui/game/GameScreen';
 import { WordListScreen } from './ui/game/WordListScreen';
 import { WordSearchScreen } from './ui/game/WordSearchScreen';
 import { GridEditorScreen } from './ui/game/GridEditorScreen';
+import { StartScreen } from './ui/start/StartScreen';
+import { PendingCreationScreen } from './ui/start/PendingCreationScreen';
+import { StartOptionId } from './ui/start/startOptions';
+import { defaultStartStyleId, StartStyleId } from './ui/start/startStyles';
+import { createStyleVariables } from './ui/theme/styleVariables';
 import { useGameViewModel } from './ui/game/GameViewModel';
 import { WORD_LISTS, WordListInfo } from './data/model/WordListInfo';
 
-type Screen = 'game' | 'wordList' | 'search' | 'editor';
+type Screen = 'start' | 'game' | 'wordList' | 'search' | 'editor' | 'wordListInput' | 'layoutFill';
+type EditorReturnScreen = 'start' | 'game';
 
 // localStorage keys
 const STORAGE_KEY_CUSTOM_LISTS = 'crossword_custom_word_lists';
@@ -85,7 +91,10 @@ function mergeDefaultWordLists(stored: WordListInfo[]): WordListInfo[] {
 }
 
 function App() {
-  const [screen, setScreen] = useState<Screen>('game');
+  const [screen, setScreen] = useState<Screen>('start');
+  const [editorReturnScreen, setEditorReturnScreen] = useState<EditorReturnScreen>('game');
+  const [startStyleId, setStartStyleId] = useState<StartStyleId>(defaultStartStyleId);
+  const appStyleVariables = createStyleVariables(startStyleId);
 
   // 从localStorage加载当前词表ID
   const [currentWordListId, setCurrentWordListId] = useState<string>(() =>
@@ -223,9 +232,28 @@ function App() {
     setScreen('game');
   };
 
-  // 打开编辑器
-  const handleOpenEditor = () => {
-    setScreen('editor');
+  const handleBackToStart = () => {
+    setScreen('start');
+  };
+
+  const handleSelectStartOption = (optionId: StartOptionId) => {
+    if (optionId === 'manual-placement') {
+      setEditorReturnScreen('start');
+      setScreen('editor');
+      return;
+    }
+
+    if (optionId === 'word-list') {
+      setScreen('wordListInput');
+      return;
+    }
+
+    if (optionId === 'play-game') {
+      setScreen('game');
+      return;
+    }
+
+    setScreen('layoutFill');
   };
 
   // 从编辑器开始游戏
@@ -234,55 +262,101 @@ function App() {
     setScreen('game');
   };
 
+  if (screen === 'start') {
+    return (
+      <div style={appStyleVariables}>
+        <StartScreen
+          activeStyleId={startStyleId}
+          onStyleChange={setStartStyleId}
+          onSelectOption={handleSelectStartOption}
+        />
+      </div>
+    );
+  }
+
+  if (screen === 'wordListInput') {
+    return (
+      <div style={appStyleVariables}>
+        <PendingCreationScreen
+          title="输入词表生成"
+          message="这里会承接词表文本输入，解析后直接生成一局游戏。当前先保留入口和返回路径。"
+          styleId={startStyleId}
+          onBack={handleBackToStart}
+        />
+      </div>
+    );
+  }
+
+  if (screen === 'layoutFill') {
+    return (
+      <div style={appStyleVariables}>
+        <PendingCreationScreen
+          title="输入布局自动填词"
+          message="这里会承接布局输入，再从词表中自动匹配可填入的词。当前先保留入口和返回路径。"
+          styleId={startStyleId}
+          onBack={handleBackToStart}
+        />
+      </div>
+    );
+  }
+
   if (screen === 'wordList') {
     return (
-      <WordListScreen
-        wordLists={wordListInfos}
-        customWordData={customWordLists}
-        currentWordListId={currentWordListId}
-        onSelectWordList={handleSelectWordList}
-        onBackToGame={handleBackToGame}
-        onAddCustomWordList={handleAddCustomWordList}
-        onDeleteCustomWordList={handleDeleteCustomWordList}
-        onUpdateCustomWordListName={handleUpdateCustomWordListName}
-      />
+      <div style={appStyleVariables}>
+        <WordListScreen
+          wordLists={wordListInfos}
+          customWordData={customWordLists}
+          currentWordListId={currentWordListId}
+          onSelectWordList={handleSelectWordList}
+          onBackToGame={handleBackToGame}
+          onAddCustomWordList={handleAddCustomWordList}
+          onDeleteCustomWordList={handleDeleteCustomWordList}
+          onUpdateCustomWordListName={handleUpdateCustomWordListName}
+        />
+      </div>
     );
   }
 
   if (screen === 'search') {
     return (
-      <WordSearchScreen
-        wordLists={wordListInfos}
-        currentWordListId={currentWordListId}
-        onBackToGame={handleBackToGame}
-      />
+      <div style={appStyleVariables}>
+        <WordSearchScreen
+          wordLists={wordListInfos}
+          currentWordListId={currentWordListId}
+          onBackToGame={handleBackToGame}
+        />
+      </div>
     );
   }
 
   if (screen === 'editor') {
     return (
-      <GridEditorScreen
-        onBack={handleBackToGame}
-        onPlay={handlePlayFromEditor}
-      />
+      <div style={appStyleVariables}>
+        <GridEditorScreen
+          onBack={() => setScreen(editorReturnScreen)}
+          onPlay={handlePlayFromEditor}
+        />
+      </div>
     );
   }
 
   return (
-    <GameScreen
-      state={state}
-      onCellClick={selectCell}
-      onToggleDirection={toggleDirection}
-      onSetDirection={setDirection}
-      onLetterInput={inputLetter}
-      onDelete={deleteLetter}
-      onShowSolution={showSolution}
-      onHideSolution={hideSolution}
-      onNewGame={(rows, cols) => newGame(rows ?? state.gridRows, cols ?? state.gridCols)}
-      onShowWordList={handleShowWordList}
-      onShowSearch={handleShowSearch}
-      onShowEditor={handleOpenEditor}
-    />
+    <div style={appStyleVariables}>
+      <GameScreen
+        state={state}
+        onCellClick={selectCell}
+        onToggleDirection={toggleDirection}
+        onSetDirection={setDirection}
+        onLetterInput={inputLetter}
+        onDelete={deleteLetter}
+        onShowSolution={showSolution}
+        onHideSolution={hideSolution}
+        onNewGame={(rows, cols) => newGame(rows ?? state.gridRows, cols ?? state.gridCols)}
+        onShowWordList={handleShowWordList}
+        onShowSearch={handleShowSearch}
+        onBackToStart={handleBackToStart}
+      />
+    </div>
   );
 }
 

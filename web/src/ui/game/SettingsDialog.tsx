@@ -40,8 +40,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
       <div style={{
         backgroundColor: colors.surface,
         padding: 24,
-        borderRadius: 16,
+        borderRadius: 8,
         minWidth: 280,
+        border: `1px solid ${colors.outline}`,
+        boxShadow: 'var(--cw-shadow)',
       }}>
         <h2 style={{ margin: '0 0 20px 0', color: colors.onSurface }}>设置网格尺寸</h2>
 
@@ -58,11 +60,13 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
               max={25}
               style={{
                 width: '100%',
-                padding: '8px 12px',
-                border: `1px solid ${colors.outline}`,
-                borderRadius: 8,
-                fontSize: 16,
-                boxSizing: 'border-box',
+              padding: '8px 12px',
+              border: `1px solid ${colors.outline}`,
+              borderRadius: 8,
+              backgroundColor: colors.surface,
+              color: colors.onSurface,
+              fontSize: 16,
+              boxSizing: 'border-box',
               }}
             />
           </div>
@@ -78,11 +82,13 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
               max={25}
               style={{
                 width: '100%',
-                padding: '8px 12px',
-                border: `1px solid ${colors.outline}`,
-                borderRadius: 8,
-                fontSize: 16,
-                boxSizing: 'border-box',
+              padding: '8px 12px',
+              border: `1px solid ${colors.outline}`,
+              borderRadius: 8,
+              backgroundColor: colors.surface,
+              color: colors.onSurface,
+              fontSize: 16,
+              boxSizing: 'border-box',
               }}
             />
           </div>
@@ -92,7 +98,8 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
           <button
             onClick={onCancel}
             style={{
-              padding: '8px 16px',
+              minHeight: 44,
+              padding: '0 16px',
               backgroundColor: 'transparent',
               color: colors.primary,
               border: `1px solid ${colors.outline}`,
@@ -106,7 +113,8 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
           <button
             onClick={handleConfirm}
             style={{
-              padding: '8px 16px',
+              minHeight: 44,
+              padding: '0 16px',
               backgroundColor: colors.primary,
               color: colors.onPrimary,
               border: 'none',

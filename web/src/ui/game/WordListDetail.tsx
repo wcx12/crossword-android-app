@@ -3,6 +3,17 @@ import { WordListInfo } from '../../data/model/WordListInfo';
 import { colors } from '../theme/theme';
 import { WordEntry, getWordChars } from '../../data/model/WordEntry';
 import { parseWordList } from '../../data/local/WordListLoader';
+import {
+  inputStyle,
+  navButtonStyle,
+  pageHeaderActionsStyle,
+  pageHeaderLeftStyle,
+  pageHeaderStyle,
+  pageShellStyle,
+  pageTitleStyle,
+  primaryButtonStyle,
+  quietButtonStyle,
+} from '../theme/pageStyles';
 
 interface WordListDetailProps {
   wordList: WordListInfo;
@@ -60,33 +71,17 @@ export const WordListDetail: React.FC<WordListDetailProps> = ({
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100vh',
-    }}>
+    <div style={{ ...pageShellStyle, height: '100vh' }}>
       {/* 顶部栏 */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        padding: '12px 16px',
-        backgroundColor: colors.primary,
-        color: colors.onPrimary,
-      }}>
-        <button
-          onClick={onBack}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: colors.onPrimary,
-            cursor: 'pointer',
-            fontSize: 14,
-            marginRight: 16,
-          }}
-        >
-          ← 返回
-        </button>
-        {isEditing && isCustom ? (
+      <div style={pageHeaderStyle}>
+        <div style={pageHeaderLeftStyle}>
+          <button
+            onClick={onBack}
+            style={navButtonStyle}
+          >
+            返回词表
+          </button>
+          {isEditing && isCustom ? (
           <input
             type="text"
             value={editName}
@@ -94,67 +89,45 @@ export const WordListDetail: React.FC<WordListDetailProps> = ({
             onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
             autoFocus
             style={{
+              ...inputStyle(),
               flex: 1,
               fontSize: 18,
               fontWeight: 'bold',
-              background: 'rgba(255,255,255,0.2)',
-              border: 'none',
-              borderRadius: 4,
-              padding: '4px 8px',
-              color: colors.onPrimary,
             }}
           />
         ) : (
-          <span style={{ flex: 1, fontSize: 18, fontWeight: 'bold' }}>{wordList.name}</span>
+          <span style={{ ...pageTitleStyle, flex: 1 }}>{wordList.name}</span>
         )}
+        </div>
+        <div style={pageHeaderActionsStyle}>
         {isCustom && !isEditing && (
           <button
             onClick={() => setIsEditing(true)}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: colors.onPrimary,
-              cursor: 'pointer',
-              fontSize: 14,
-              marginLeft: 8,
-            }}
+            style={quietButtonStyle}
           >
-            ✏️
+            重命名
           </button>
         )}
         {isEditing && (
           <>
             <button
               onClick={handleSaveName}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: colors.onPrimary,
-                cursor: 'pointer',
-                fontSize: 14,
-                marginLeft: 8,
-              }}
+              style={quietButtonStyle}
             >
-              ✓
+              保存
             </button>
             <button
               onClick={() => {
                 setEditName(wordList.name);
                 setIsEditing(false);
               }}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: colors.onPrimary,
-                cursor: 'pointer',
-                fontSize: 14,
-                marginLeft: 4,
-              }}
+              style={quietButtonStyle}
             >
-              ✕
+              取消
             </button>
           </>
         )}
+        </div>
       </div>
 
       {/* 单词数量提示 */}
@@ -178,9 +151,10 @@ export const WordListDetail: React.FC<WordListDetailProps> = ({
         ) : (
           <div style={{
             backgroundColor: colors.surface,
-            borderRadius: 12,
+            borderRadius: 8,
             border: `1px solid ${colors.outline}`,
             overflow: 'hidden',
+            boxShadow: 'var(--cw-card-shadow)',
           }}>
             {words.map((word, index) => (
               <div
@@ -223,14 +197,8 @@ export const WordListDetail: React.FC<WordListDetailProps> = ({
           onClick={onStartGame}
           style={{
             width: '100%',
-            padding: '12px 16px',
-            backgroundColor: colors.primary,
-            color: colors.onPrimary,
-            border: 'none',
-            borderRadius: 8,
+            ...primaryButtonStyle(),
             fontSize: 16,
-            fontWeight: 'bold',
-            cursor: 'pointer',
           }}
         >
           使用此词表开始游戏
