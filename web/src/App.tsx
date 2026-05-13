@@ -3,8 +3,8 @@ import { GameScreen } from './ui/game/GameScreen';
 import { WordListScreen } from './ui/game/WordListScreen';
 import { WordSearchScreen } from './ui/game/WordSearchScreen';
 import { GridEditorScreen } from './ui/game/GridEditorScreen';
+import { LayoutFillScreen } from './ui/layoutFill/LayoutFillScreen';
 import { StartScreen } from './ui/start/StartScreen';
-import { PendingCreationScreen } from './ui/start/PendingCreationScreen';
 import { WordListInputScreen } from './ui/start/WordListInputScreen';
 import { StartOptionId } from './ui/start/startOptions';
 import { defaultStartStyleId, StartStyleId } from './ui/start/startStyles';
@@ -267,7 +267,10 @@ function App() {
   };
 
   // 从编辑器开始游戏
-  const handlePlayFromEditor = (grid: { isBlack: boolean; letter: string }[][], words: any[]) => {
+  const handlePlayFromEditor = (
+    grid: { isBlack: boolean; letter: string }[][],
+    words: { word: string; clue: string; row: number; col: number; direction: 'across' | 'down' }[]
+  ) => {
     loadCustomPuzzle(grid, words);
     setScreen('game');
   };
@@ -298,11 +301,12 @@ function App() {
   if (screen === 'layoutFill') {
     return (
       <div style={appStyleVariables}>
-        <PendingCreationScreen
-          title="输入布局自动填词"
-          message="这里会承接布局输入，再从词表中自动匹配可填入的词。当前先保留入口和返回路径。"
-          styleId={startStyleId}
+        <LayoutFillScreen
+          wordLists={wordListInfos}
+          customWordData={customWordLists}
+          currentWordListId={currentWordListId}
           onBack={handleBackToStart}
+          onPlay={handlePlayFromEditor}
         />
       </div>
     );
