@@ -1,9 +1,27 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Crossword, Direction, WordPlacement, isCorrect, getWordsAt, Cell, Clue } from '../../domain/model/crossword';
 import { CrosswordGenerator } from '../../domain/usecase/CrosswordGenerator';
-import { getWordChars, WordEntry } from '../../data/model/WordEntry';
+import { WordEntry } from '../../data/model/WordEntry';
 import { getCandidateChars, selectChineseCandidateWords } from '../../domain/usecase/ChineseCandidateSelector';
 import { parseWordList } from '../../data/local/WordListLoader';
+import {
+  CustomWordGenerationOptions,
+  CustomWordGenerationResult,
+  CustomWordSourceEntry,
+  GameWordSource,
+  generateCustomWordPuzzle,
+  hasHanText,
+  resolveNewGameSource,
+  toGeneratorWords,
+} from './customWordGeneration';
+
+export {
+  resolveNewGameSource,
+  toGeneratorWords,
+  type CustomWordGenerationResult,
+  type CustomWordSourceEntry,
+  type GameWordSource,
+} from './customWordGeneration';
 
 export interface GameState {
   isLoading: boolean;
@@ -37,18 +55,19 @@ const initialState: GameState = {
   candidateChars: [],
 };
 
-function hasHan(text: string): boolean {
-  return /[\u4e00-\u9fff]/u.test(text);
-}
+const DEFAULT_WORD_LIST_PATH = '/wordlists/python_xword.txt';
 
 export function useGameViewModel() {
   const [state, setState] = useState<GameState>(initialState);
   const generatorRef = useRef<CrosswordGenerator>(new CrosswordGenerator(13, 13));
-  const currentFilePathRef = useRef<string>('/wordlists/python_xword.txt');
+  const currentWordSourceRef = useRef<GameWordSource>({
+    type: 'file',
+    filePath: DEFAULT_WORD_LIST_PATH,
+  });
 
   // 初始化 - 加载词库并开始新游戏
   useEffect(() => {
-    loadAndGenerate(currentFilePathRef.current);
+    loadAndGenerate(DEFAULT_WORD_LIST_PATH);
   }, []);
 
   // 加载词库并生成谜题
@@ -78,6 +97,29 @@ export function useGameViewModel() {
       });
   };
 
+  const applyGeneratedCrossword = useCallback((crossword: Crossword, rows: number, cols: number) => {
+    const inputMode = crossword.placements.some(placement => hasHanText(placement.word))
+      ? 'candidateChars'
+      : 'letters';
+
+    setState(prev => ({
+      ...prev,
+      crossword,
+      isLoading: false,
+      isSolved: false,
+      showSolution: false,
+      selectedCell: null,
+      currentWord: null,
+      currentWords: [],
+      gridRows: rows,
+      gridCols: cols,
+      inputMode,
+      candidateChars: inputMode === 'candidateChars'
+        ? getCandidateChars(crossword.placements.map(placement => placement.word))
+        : [],
+    }));
+  }, []);
+
   // 生成谜题
   const generatePuzzle = useCallback((words: WordEntry[], rows?: number, cols?: number) => {
     setState(prev => ({ ...prev, isLoading: true, errorMessage: null }));
@@ -92,29 +134,14 @@ export function useGameViewModel() {
       const newGenerator = new CrosswordGenerator(actualRows, actualCols);
       generatorRef.current = newGenerator;
 
-      const inputMode = words.some(entry => hasHan(entry.word)) ? 'candidateChars' : 'letters';
+      const inputMode = words.some(entry => hasHanText(entry.word)) ? 'candidateChars' : 'letters';
       const generatorWords = inputMode === 'candidateChars'
         ? selectChineseCandidateWords(words, 80)
         : words;
       const crossword = newGenerator.generate(generatorWords, 3);
 
       if (crossword) {
-        setState(prev => ({
-          ...prev,
-          crossword,
-          isLoading: false,
-          isSolved: false,
-          showSolution: false,
-          selectedCell: null,
-          currentWord: null,
-          currentWords: [],
-          gridRows: actualRows,
-          gridCols: actualCols,
-          inputMode,
-          candidateChars: inputMode === 'candidateChars'
-            ? getCandidateChars(crossword.placements.map(placement => placement.word))
-            : [],
-        }));
+        applyGeneratedCrossword(crossword, actualRows, actualCols);
       } else {
         setState(prev => ({
           ...prev,
@@ -123,33 +150,54 @@ export function useGameViewModel() {
         }));
       }
     }, 50);
-  }, [state.gridRows, state.gridCols]);
+  }, [applyGeneratedCrossword, state.gridRows, state.gridCols]);
 
   // 开始新游戏
   const newGame = useCallback((rows?: number, cols?: number, filePath?: string) => {
-    if (filePath) {
-      currentFilePathRef.current = filePath;
-      loadAndGenerate(filePath, rows, cols);
+    const nextSource = resolveNewGameSource(currentWordSourceRef.current, filePath);
+    currentWordSourceRef.current = nextSource;
+
+    if (nextSource.type === 'file') {
+      loadAndGenerate(nextSource.filePath, rows, cols);
     } else {
-      loadAndGenerate(currentFilePathRef.current, rows, cols);
+      generatePuzzle(toGeneratorWords(nextSource.entries), rows, cols);
     }
-  }, []);
+  }, [generatePuzzle]);
 
   // 切换词表
   const switchWordList = useCallback((filePath: string, rows?: number, cols?: number) => {
-    currentFilePathRef.current = filePath;
+    currentWordSourceRef.current = { type: 'file', filePath };
     loadAndGenerate(filePath, rows, cols);
   }, []);
 
   // 使用自定义词表生成谜题
-  const setCustomWords = useCallback((entries: { word: string; clue: string }[], rows?: number, cols?: number) => {
-    const words: WordEntry[] = entries.map(e => ({
-      word: hasHan(e.word) ? e.word : e.word.toUpperCase(),
-      clue: e.clue,
-      length: getWordChars(e.word).length,
-    }));
-    generatePuzzle(words, rows, cols);
-  }, []);
+  const setCustomWords = useCallback((
+    entries: CustomWordSourceEntry[],
+    rows?: number,
+    cols?: number,
+    options: CustomWordGenerationOptions = {}
+  ): CustomWordGenerationResult => {
+    const sourceEntries = entries.map(entry => ({ word: entry.word, clue: entry.clue }));
+    const actualRows = rows ?? state.gridRows;
+    const actualCols = cols ?? state.gridCols;
+    const result = generateCustomWordPuzzle(sourceEntries, actualRows, actualCols, options);
+
+    setState(prev => ({ ...prev, isLoading: true, errorMessage: null }));
+
+    if (result.ok && result.crossword) {
+      currentWordSourceRef.current = { type: 'customWords', entries: sourceEntries };
+      generatorRef.current = new CrosswordGenerator(actualRows, actualCols);
+      applyGeneratedCrossword(result.crossword, actualRows, actualCols);
+    } else {
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        errorMessage: result.message,
+      }));
+    }
+
+    return result;
+  }, [applyGeneratedCrossword, state.gridRows, state.gridCols]);
 
   // 设置网格尺寸
   const setGridSize = useCallback((rows: number, cols: number) => {
@@ -163,6 +211,10 @@ export function useGameViewModel() {
   ) => {
     const rows = customGrid.length;
     const cols = customGrid[0]?.length || 0;
+    currentWordSourceRef.current = {
+      type: 'customWords',
+      entries: customWords.map(word => ({ word: word.word, clue: word.clue })),
+    };
 
     // 构建 Cell 网格
     const grid: Cell[][] = [];
@@ -219,8 +271,8 @@ export function useGameViewModel() {
       selectedCell: null,
       currentWord: null,
       currentWords: [],
-      inputMode: customWords.some(word => hasHan(word.word)) ? 'candidateChars' : 'letters',
-      candidateChars: customWords.some(word => hasHan(word.word))
+      inputMode: customWords.some(word => hasHanText(word.word)) ? 'candidateChars' : 'letters',
+      candidateChars: customWords.some(word => hasHanText(word.word))
         ? getCandidateChars(customWords.map(word => word.word))
         : [],
     }));
@@ -296,7 +348,7 @@ export function useGameViewModel() {
     if (!cell || cell.isBlocked) return;
 
     // 直接修改 char
-    crossword.grid[selectedCell[0]][selectedCell[1]].char = hasHan(letter) ? letter : letter.toUpperCase();
+    crossword.grid[selectedCell[0]][selectedCell[1]].char = hasHanText(letter) ? letter : letter.toUpperCase();
 
     // 自动移到下一个格子
     moveToNextCell();

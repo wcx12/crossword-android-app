@@ -5,10 +5,12 @@ import { WordSearchScreen } from './ui/game/WordSearchScreen';
 import { GridEditorScreen } from './ui/game/GridEditorScreen';
 import { StartScreen } from './ui/start/StartScreen';
 import { PendingCreationScreen } from './ui/start/PendingCreationScreen';
+import { WordListInputScreen } from './ui/start/WordListInputScreen';
 import { StartOptionId } from './ui/start/startOptions';
 import { defaultStartStyleId, StartStyleId } from './ui/start/startStyles';
 import { createStyleVariables } from './ui/theme/styleVariables';
 import { useGameViewModel } from './ui/game/GameViewModel';
+import { CustomWordGenerationOptions, CustomWordGenerationResult } from './ui/game/customWordGeneration';
 import { WORD_LISTS, WordListInfo } from './data/model/WordListInfo';
 
 type Screen = 'start' | 'game' | 'wordList' | 'search' | 'editor' | 'wordListInput' | 'layoutFill';
@@ -171,7 +173,15 @@ function App() {
   };
 
   // 当添加自定义词表时
-  const handleAddCustomWordList = (entries: { word: string; clue: string }[]) => {
+  const handleAddCustomWordList = (
+    entries: { word: string; clue: string }[],
+    options: CustomWordGenerationOptions = {}
+  ): CustomWordGenerationResult => {
+    const generationResult = setCustomWords(entries, state.gridRows, state.gridCols, options);
+    if (!generationResult.ok) {
+      return generationResult;
+    }
+
     const newId = `custom_${Date.now()}`;
     const newWordList: WordListInfo = {
       id: newId,
@@ -190,7 +200,7 @@ function App() {
     // 自动开始游戏
     setScreen('game');
     setCurrentWordListId(newId);
-    setCustomWords(entries, state.gridRows, state.gridCols);
+    return generationResult;
   };
 
   // 删除自定义词表
@@ -277,11 +287,9 @@ function App() {
   if (screen === 'wordListInput') {
     return (
       <div style={appStyleVariables}>
-        <PendingCreationScreen
-          title="输入词表生成"
-          message="这里会承接词表文本输入，解析后直接生成一局游戏。当前先保留入口和返回路径。"
-          styleId={startStyleId}
+        <WordListInputScreen
           onBack={handleBackToStart}
+          onConfirm={handleAddCustomWordList}
         />
       </div>
     );
